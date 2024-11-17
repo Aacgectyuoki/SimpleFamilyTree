@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { parseGedcomFile } from "../services/gedcomParser";
+import React, { useState } from 'react';
+import { parseGedcomFile } from '../services/gedcomParser';
 
 const GedcomUploader = ({ onDataLoaded }) => {
   const [error, setError] = useState(null);
@@ -11,25 +11,25 @@ const GedcomUploader = ({ onDataLoaded }) => {
       console.log("No file selected.");
       return;
     }
-  
-    console.log("Uploaded file:", file.name, file.size); // Log file name and size
-  
+
     try {
-      const gedcomData = await parseGedcomFile(file);
-      console.log("Parsed GEDCOM Data:", gedcomData); // Log parsed data
-      onDataLoaded(gedcomData);
+      console.log("File selected:", file);
+      const parsedData = await parseGedcomFile(file);
+      console.log("Parsed data:", parsedData);
+      onDataLoaded(parsedData);
       setError(null);
     } catch (err) {
-      console.error("Failed to parse GEDCOM file:", err.message);
-      setError("Failed to parse GEDCOM file: " + err.message);
+      console.error("Error in GEDCOM parsing:", err.message);
+      setError("Failed to parse GEDCOM file. Please check the format and try again.");
     }
-  };  
+  };
 
   return (
     <div className="file-uploader">
       <input
         type="file"
         accept=".ged"
+        aria-label="file"
         onChange={handleFileUpload}
         className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
       />

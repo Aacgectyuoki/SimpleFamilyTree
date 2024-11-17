@@ -1,27 +1,25 @@
-import parseGEDCOM from 'gedcom-js';
-import React from 'react';
+import parse from 'gedcom-js';
 
-const parseGedcomFile = (file) => {
+export const parseGedcomFile = async (file) => {
   const reader = new FileReader();
-  reader.onload = (e) => {
-    const target = e.target;
-    if (!target) return;
-    const gedcomData = target.result;
-    const parsedData = parseGEDCOM.parse(gedcomData);
-    console.log(parsedData); // Parsed tree structure
-  };
-  reader.readAsText(file);
+
+  return new Promise((resolve, reject) => {
+    reader.onload = (event) => {
+      try {
+        const gedcomData = event.target?.result;
+        if (!gedcomData) {
+          reject(new Error("Failed to read file content."));
+          return;
+        }
+        const parsedData = parse.parse(gedcomData); // Parse the GEDCOM data
+        console.log("Parsed Data:", parsedData); // Log for debugging
+        resolve(parsedData);
+      } catch (error) {
+        console.error("Parsing Error:", error);
+        reject(error); // Reject with the error for the UI
+      }
+    };
+
+    reader.readAsText(file);
+  });
 };
-
-// File input handler
-const handleFileUpload = (event) => {
-  const file = event.target.files[0];
-  if (file) parseGedcomFile(file);
-};
-
-// File input in component
-const GedcomFileInput = () => (
-  <input type="file" accept=".ged" onChange={handleFileUpload} />
-);
-
-export default GedcomFileInput;

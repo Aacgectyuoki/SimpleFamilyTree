@@ -8,6 +8,7 @@
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.7.7",
     "gedcom-js": "^0.3.0",
+    "gedcom-parser": "^1.0.2",
     "i18next": "^23.16.5",
     "react": "^18.3.1",
     "react-d3-tree": "^3.6.2",
@@ -41,5 +42,20 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@babel/preset-env": "^7.26.0",
+    "@types/jest": "^29.5.14",
+    "babel-jest": "^29.7.0",
+    "mutationobserver-shim": "^0.3.7"
+  },
+  "jest": {
+    "transformIgnorePatterns": [
+      "/node_modules/(?!d3-selection|d3-transition|d3-drag|d3-dispatch|d3-ease|d3-interpolate|d3-timer|d3-color|d3-format|d3-path|d3-polygon|d3-quadtree|d3-random|d3-scale|d3-shape|d3-time|d3-time-format|d3-zoom|d3-array|d3-axis|d3-brush|d3-chord|d3-collection|d3-contour|d3-delaunay|d3-force|d3-geo|d3-hierarchy|d3-polygon|d3-quadtree|d3-random|d3-scale|d3-selection|d3-shape|d3-time|d3-time-format|d3-timer|d3-transition|d3-zoom)/"
+    ],
+    "transform": {
+      "^.+\\.jsx?$": "babel-jest"
+    }
   }
 }
