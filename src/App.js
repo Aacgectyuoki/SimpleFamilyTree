@@ -14,7 +14,7 @@ const App = () => {
 
   return (
     <div className="app">
-      <h1 className="text-xl font-bold mb-4">GEDCOM Family Tree Viewer</h1>
+      {/* <h1 className="text-xl font-bold mb-4">GEDCOM Family Tree Viewer</h1> */}
       <GedcomUploader onDataLoaded={handleDataLoaded} />
       {gedcomData && <FamilyTree gedcomData={gedcomData} />}
     </div>

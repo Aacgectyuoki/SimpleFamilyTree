@@ -1,31 +1,50 @@
 import React from "react";
 
 const FamilyTree = ({ gedcomData }) => {
-  if (!gedcomData || !gedcomData.individuals) {
-    console.warn("No GEDCOM data received");
-    return <p>No tree data available</p>;
-  }
+  if (!gedcomData || !gedcomData.individuals) return <p>No family data available</p>;
 
-  console.log("Received GEDCOM data in FamilyTree:", gedcomData);
+  const findIndividual = (id) =>
+    gedcomData.individuals.find((individual) => individual.id === id);
 
   const renderIndividual = (individual) => {
-    // Format the name to remove "/"
-    const name = individual.names.join(" ").replace(/\//g, "");
+    const name = individual.names.join(" ");
     const birth = individual.births?.[0]?.date || "Unknown";
     const death = individual.deaths?.[0]?.date || "Unknown";
 
-    console.log(`Rendering individual: ${name}, Birth: ${birth}, Death: ${death}`);
+    const family = gedcomData.families.find((fam) =>
+      fam.children.includes(individual.id)
+    );
+
+    const spouse = family
+      ? findIndividual(family.husband === individual.id ? family.wife : family.husband)
+      : null;
+
+    const children = family
+      ? family.children
+          .filter((childId) => childId !== individual.id)
+          .map((childId) => findIndividual(childId))
+      : [];
 
     return (
       <div key={individual.id} className="individual mb-4">
         <h3 className="font-bold">{name}</h3>
         <p>Birth: {birth}</p>
         <p>Death: {death}</p>
+        {spouse && <p>Spouse: {spouse.names.join(" ")}</p>}
+        {children.length > 0 && (
+          <div>
+            <p>Children:</p>
+            <ul>
+              {children.map((child) => (
+                <li key={child.id}>{child.names.join(" ")}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     );
   };
 
-  console.log("Rendering family tree...");
   return (
     <div className="family-tree">
       <h2 className="text-lg font-bold">Family Tree</h2>
@@ -35,6 +54,3 @@ const FamilyTree = ({ gedcomData }) => {
 };
 
 export default FamilyTree;
-
-
-
