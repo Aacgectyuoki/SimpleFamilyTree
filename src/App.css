@@ -36,3 +36,28 @@
     transform: rotate(360deg);
   }
 } */
+
+
+.family-tree {
+  margin-top: 1rem;
+}
+
+.individual {
+  margin-bottom: 1rem;
+}
+
+.font-bold {
+  font-weight: bold;
+}
+
+.text-lg {
+  font-size: 1.25rem;
+}
+
+.text-xl {
+  font-size: 1.5rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}

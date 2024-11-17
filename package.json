@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
     "axios": "^1.7.7",
@@ -20,8 +20,8 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "start": "NODE_OPTIONS=--openssl-legacy-provider react-scripts start",
+    "build": "NODE_OPTIONS=--openssl-legacy-provider react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -47,15 +47,8 @@
     "@babel/core": "^7.26.0",
     "@babel/preset-env": "^7.26.0",
     "@types/jest": "^29.5.14",
-    "babel-jest": "^29.7.0",
+    "identity-obj-proxy": "^3.0.0",
+    "jest-environment-jsdom": "^29.7.0",
     "mutationobserver-shim": "^0.3.7"
-  },
-  "jest": {
-    "transformIgnorePatterns": [
-      "/node_modules/(?!d3-selection|d3-transition|d3-drag|d3-dispatch|d3-ease|d3-interpolate|d3-timer|d3-color|d3-format|d3-path|d3-polygon|d3-quadtree|d3-random|d3-scale|d3-shape|d3-time|d3-time-format|d3-zoom|d3-array|d3-axis|d3-brush|d3-chord|d3-collection|d3-contour|d3-delaunay|d3-force|d3-geo|d3-hierarchy|d3-polygon|d3-quadtree|d3-random|d3-scale|d3-selection|d3-shape|d3-time|d3-time-format|d3-timer|d3-transition|d3-zoom)/"
-    ],
-    "transform": {
-      "^.+\\.jsx?$": "babel-jest"
-    }
   }
 }

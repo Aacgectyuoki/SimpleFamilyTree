@@ -1,29 +1,40 @@
 import React from "react";
-import Tree from "react-d3-tree";
-import { transformToTree } from "../services/treeTransformer";
 
 const FamilyTree = ({ gedcomData }) => {
-  if (!gedcomData) {
-    return <p>No GEDCOM data available.</p>;
+  if (!gedcomData || !gedcomData.individuals) {
+    console.warn("No GEDCOM data received");
+    return <p>No tree data available</p>;
   }
 
-  const treeData = transformToTree(gedcomData);
+  console.log("Received GEDCOM data in FamilyTree:", gedcomData);
 
-  if (!treeData) {
-    return <p>Failed to build family tree.</p>;
-  }
+  const renderIndividual = (individual) => {
+    // Format the name to remove "/"
+    const name = individual.names.join(" ").replace(/\//g, "");
+    const birth = individual.births?.[0]?.date || "Unknown";
+    const death = individual.deaths?.[0]?.date || "Unknown";
 
+    console.log(`Rendering individual: ${name}, Birth: ${birth}, Death: ${death}`);
+
+    return (
+      <div key={individual.id} className="individual mb-4">
+        <h3 className="font-bold">{name}</h3>
+        <p>Birth: {birth}</p>
+        <p>Death: {death}</p>
+      </div>
+    );
+  };
+
+  console.log("Rendering family tree...");
   return (
-    <div id="treeWrapper" style={{ width: "100%", height: "600px" }}>
-      <Tree
-        data={treeData}
-        orientation="vertical"
-        pathFunc="elbow"
-        translate={{ x: 300, y: 50 }}
-        nodeSize={{ x: 200, y: 200 }}
-      />
+    <div className="family-tree">
+      <h2 className="text-lg font-bold">Family Tree</h2>
+      {gedcomData.individuals.map(renderIndividual)}
     </div>
   );
 };
 
 export default FamilyTree;
+
+
+
