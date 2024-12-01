@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Routes, Route, Link } from "react-router-dom";
 import FamilyTreeDiagram from "./components/FamilyTreeDiagram";
+import FamilyTree from "./components/FamilyTree";
 import GEDCOMPage from "./components/GEDCOMPage";
 
 const App = () => {
@@ -35,6 +36,8 @@ const App = () => {
           }
         />
       </Routes>
+      <h1>Example Family Tree</h1>
+      <FamilyTree />
     </div>
   );
 };

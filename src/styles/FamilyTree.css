@@ -1,0 +1,19 @@
+.node-box {
+    text-align: center;
+    font-family: Arial, sans-serif;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 10px;
+  }
+  .node-box h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+  }
+  .node-box p {
+    margin: 5px 0;
+    font-size: 12px;
+    color: #666;
+  }
+  
