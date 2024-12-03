@@ -1,78 +1,147 @@
-import React, { useMemo } from "react";
-import { Tree } from "react-d3-tree";
+import React, { useEffect, useState } from "react";
+import ReactFlow, {
+  Background,
+  Controls,
+  ReactFlowProvider,
+} from "react-flow-renderer";
+import dagre from "dagre";
+import "../styles/FamilyTree.css";
+import "react-flow-renderer/dist/style.css";
+
+const dagreGraph = new dagre.graphlib.Graph();
+dagreGraph.setDefaultEdgeLabel(() => ({}));
+
+const nodeWidth = 200;
+const nodeHeight = 100;
+
+// Helper to calculate layout
+const getLayoutedElements = (nodes, edges) => {
+  dagreGraph.setGraph({ rankdir: "TB" });
+
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  const layoutedNodes = nodes.map((node) => {
+    const nodeWithPosition = dagreGraph.node(node.id);
+    node.targetPosition = "top";
+    node.sourcePosition = "bottom";
+    node.position = {
+      x: nodeWithPosition.x - nodeWidth / 2,
+      y: nodeWithPosition.y - nodeHeight / 2,
+    };
+    return node;
+  });
+
+  return { nodes: layoutedNodes, edges };
+};
 
 const FamilyTreeDiagram = ({ gedcomData }) => {
-    // Always call useMemo to optimize performance
-    const treeData = useMemo(() => {
-      if (!gedcomData || !gedcomData.individuals || !gedcomData.families) {
-        return null; // Return null if data is invalid
-      }
-  
-      // Helper function to recursively build tree nodes
-      const buildTree = (individualId) => {
-        const individual = gedcomData.individuals[individualId];
-        if (!individual) return null;
-  
-        const name = individual.data?.NAME || "Unknown";
-        const birthYear = individual.data?.DATE || "Unknown";
-        const place = individual.data?.PLAC || "Unknown";
-  
-        // Recursively build children
-        const children =
-          individual.relationships?.children?.map(buildTree) || [];
-  
-        // Return node structure
-        return {
-          name,
-          attributes: {
-            Birth: birthYear,
-            Place: place,
-          },
-          children,
-        };
-      };
-  
-      // Build the tree for each family
-      return {
-        name: "Root",
-        children: Object.values(gedcomData.families).map((family) => {
-          const husbandNode = family.relationships.husband
-            ? buildTree(family.relationships.husband)
-            : null;
-  
-          const wifeNode = family.relationships.wife
-            ? buildTree(family.relationships.wife)
-            : null;
-  
-          // Combine husband, wife, and children into a family node
-          return {
-            name: "Family",
-            children: [
-              husbandNode,
-              wifeNode,
-              ...(family.relationships.children || []).map(buildTree),
-            ].filter(Boolean),
-          };
-        }),
-      };
-    }, [gedcomData]);
-  
-    // Handle invalid or empty data
-    if (!treeData || !treeData.children?.length) {
-      return <p>No family data available.</p>;
+  const [data, setData] = useState({ nodes: [], edges: [] });
+
+  useEffect(() => {
+    if (gedcomData) {
+      const nodes = Object.entries(gedcomData.individuals).map(([id, individual]) => ({
+        id,
+        data: {
+          label: (
+            <div className="node-box">
+              <h3>{individual.data.NAME || "Unknown"}</h3>
+              <p>Born: {individual.data.BIRT || "Unknown"}</p>
+              <p>Place: {individual.data.PLAC || "Unknown"}</p>
+            </div>
+          ),
+        },
+        style: { width: nodeWidth, height: nodeHeight },
+        hidden: false, // Default to visible
+      }));
+
+      const edges = Array.from(
+        new Map(
+          Object.entries(gedcomData.individuals).flatMap(([id, individual]) => {
+            const edgeMap = [];
+            if (individual.relationships?.father) {
+              const edgeId = `${individual.relationships.father}-${id}`;
+              edgeMap.push([edgeId, { id: edgeId, source: individual.relationships.father, target: id }]); // Correct pair structure
+            }
+            if (individual.relationships?.mother) {
+              const edgeId = `${individual.relationships.mother}-${id}`;
+              edgeMap.push([edgeId, { id: edgeId, source: individual.relationships.mother, target: id }]); // Correct pair structure
+            }
+            return edgeMap; // Ensure this returns an array of [key, value] pairs
+          })
+        ).entries() // Use entries() instead of values() to ensure compatibility
+      ).map(([key, value]) => value); // Extract only the values for edges
+
+      const layoutedData = getLayoutedElements(nodes, edges);
+      setData(layoutedData);
     }
-  
-    return (
-      <div style={{ width: "100%", height: "500px" }}>
-        <Tree
-          data={treeData}
-          orientation="vertical"
-          translate={{ x: 300, y: 50 }}
-          nodeSize={{ x: 200, y: 150 }}
-          pathFunc="elbow"
-        />
-      </div>
-    );
+  }, [gedcomData]);
+
+  const handleNodeClick = (event, node) => {
+    console.log("Node clicked:", node);
+    setData((prevData) => {
+      const relatedNodes = new Set();
+
+      // Add the clicked node
+      relatedNodes.add(node.id);
+
+      // Add parents
+      prevData.edges.forEach((edge) => {
+        if (edge.target === node.id) {
+          relatedNodes.add(edge.source); // Add parent
+        }
+      });
+
+      // Add children
+      prevData.edges.forEach((edge) => {
+        if (edge.source === node.id) {
+          relatedNodes.add(edge.target); // Add child
+        }
+      });
+
+      // Update visibility for nodes
+      const updatedNodes = prevData.nodes.map((n) => ({
+        ...n,
+        hidden: !relatedNodes.has(n.id), // Hide nodes not in the related set
+      }));
+
+      // Update visibility for edges
+      const updatedEdges = prevData.edges.filter(
+        (edge) =>
+          relatedNodes.has(edge.source) && relatedNodes.has(edge.target)
+      );
+
+      console.log("Final Related Nodes:", Array.from(relatedNodes));
+      console.log("Updated Nodes:", updatedNodes);
+      console.log("Updated Edges:", updatedEdges);
+
+      return { nodes: updatedNodes, edges: updatedEdges };
+    });
   };
-  
-  export default FamilyTreeDiagram;
+
+  return (
+    <ReactFlowProvider>
+      <div style={{ width: "100%", height: "100vh" }}>
+        <ReactFlow
+          nodes={data.nodes}
+          edges={data.edges}
+          onNodeClick={handleNodeClick} // Attach the handler here
+          fitView
+          style={{ background: "#f8f9fa" }}
+        >
+          <Background />
+          <Controls />
+        </ReactFlow>
+      </div>
+    </ReactFlowProvider>
+  );
+};
+
+export default FamilyTreeDiagram;
