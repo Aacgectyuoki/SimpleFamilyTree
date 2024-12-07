@@ -10,3 +10,12 @@
     background-color: #e7f3ff; /* Light blue background */
   }
   
+  .node-box {
+    text-align: center;
+  }
+  
+  .neon-highlight {
+    border: 4px solid neonblue;
+    box-shadow: 0 0 15px neonblue;
+  }
+  
