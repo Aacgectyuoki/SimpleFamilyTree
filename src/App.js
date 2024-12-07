@@ -14,11 +14,12 @@ const App = () => {
 
   return (
     <div className="app"
-    style={{
-      width: "80%", // Set the width to 80%
-      height: "80vh", // Keep the height as full viewport
-      margin: "0 auto", // Center the container horizontally
-    }}>
+      style={{
+        width: "80%", // Set the width to 80%
+        height: "80vh", // Keep the height as full viewport
+        margin: "0 auto", // Center the container horizontally
+      }}
+    >
       <nav>
         <Link to="/">Upload GEDCOM</Link>
         {gedcomData && <Link to="/diagram">View Family Tree</Link>}
@@ -41,8 +42,6 @@ const App = () => {
           }
         />
       </Routes>
-      {/* <h1>Example Family Tree</h1> */}
-      {/* <FamilyTree /> */}
     </div>
   );
 };

@@ -50,40 +50,38 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
 
   useEffect(() => {
     if (gedcomData) {
-      const nodes = Object.entries(gedcomData.individuals).map(([id, individual]) => ({
-        id,
-        data: {
-          label: (
-            <div className="node-box">
-              {id === selectedNodeId && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: -20, // Adjust position above the node
-                    left: "50%",
-                    transform: "translateX(-50%)",
-                    width: "60px",
-                    height: "60px",
-                    borderRadius: "50%",
-                    border: "4px solid rgba(0, 0, 255, 0.5)", // Transparent neon blue border
-                    boxShadow: "0 0 10px 4px rgba(0, 0, 255, 0.7)", // Glowing effect
-                    backgroundColor: "rgba(0, 0, 255, 0.2)", // Light transparent fill
-                    pointerEvents: "none", // Make it non-interactive
-                  }}
-                />
-              )}
-              <h3>{individual.data.NAME?.replace(/\//g, "") || "Unknown"}</h3> {/* Remove slashes */}
-              <p>Born: {individual.data.DATE || "Unknown"}</p>
-              <p>Place: {individual.data.PLAC || "Unknown"}</p>
-            </div>
-          ),
-        },
-        style: {
-          width: nodeWidth,
-          height: nodeHeight,
-        },
-        hidden: false,
-      }));      
+      const nodes = Object.entries(gedcomData.individuals).map(([id, individual]) => {
+        const isAlive = !individual.data.DEAT; // Determine if the person is alive
+        const gender = individual.data.SEX; // Get gender
+
+        // Define colors based on gender and life status
+        let backgroundColor = "#e0f7ff"; // Default: very light blue for alive males
+        if (!isAlive) {
+          backgroundColor = "#a4d8f0"; // Light blue for deceased males
+        }
+        if (gender === "F") {
+          backgroundColor = isAlive ? "#fde0f7" : "#f0a4d8"; // Very light magenta for alive females, light magenta for deceased
+        }
+
+        return {
+          id,
+          data: {
+            label: (
+              <div className="node-box">
+                <h3>{individual.data.NAME?.replace(/\//g, "") || "Unknown"}</h3> {/* Remove slashes */}
+                <p>Born: {individual.data.DATE || "Unknown"}</p>
+                <p>Place: {individual.data.PLAC || "Unknown"}</p>
+              </div>
+            ),
+          },
+          style: {
+            width: nodeWidth,
+            height: nodeHeight,
+            backgroundColor,
+          },
+          hidden: false,
+        };
+      });
 
       const edges = Object.entries(gedcomData.individuals)
         .flatMap(([id, individual]) => {
@@ -108,7 +106,7 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
       const layoutedData = getLayoutedElements(nodes, edges);
       setData(layoutedData);
     }
-  }, [gedcomData, selectedNodeId]);
+  }, [gedcomData]);
 
 
   const handleNodeClick = (event, node) => {

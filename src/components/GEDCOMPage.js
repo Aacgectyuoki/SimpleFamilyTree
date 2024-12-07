@@ -14,7 +14,7 @@ const GEDCOMPage = ({ gedcomData, onDataLoaded }) => {
         Upload a GEDCOM file to visualize your family tree.
       </p>
       <GedcomUploader onDataLoaded={onDataLoaded} />
-      {gedcomData && (
+      {/* {gedcomData && (
         <button
           onClick={() => navigate("/diagram")}
           style={{
@@ -32,7 +32,7 @@ const GEDCOMPage = ({ gedcomData, onDataLoaded }) => {
         >
           View Family Tree
         </button>
-      )}
+      )} */}
     </div>
   );
 };

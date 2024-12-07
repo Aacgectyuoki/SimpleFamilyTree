@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { handleFileUpload } from "../services/gedcomParser";
 
 // Helper function to clean up names
@@ -8,17 +9,14 @@ const cleanName = (name) => name.replace(/[\/]/g, "").trim();
 const reconcileFamilyData = (parsedData) => {
   const { individuals, families } = parsedData;
 
-  // Loop through families to find inconsistencies
   for (const familyId1 in families) {
     const family1 = families[familyId1];
 
-    // Find another family with the same child
     for (const familyId2 in families) {
       if (familyId1 === familyId2) continue;
 
       const family2 = families[familyId2];
 
-      // Check if the same child exists in both families
       const commonChild = family1.relationships.children.find((childId) =>
         family2.relationships.children.includes(childId)
       );
@@ -26,7 +24,6 @@ const reconcileFamilyData = (parsedData) => {
       if (commonChild) {
         console.log("Combining families with common child:", family1, family2);
 
-        // Merge families: Assign husband and wife to one family
         if (family1.relationships.husband && family2.relationships.wife) {
           family1.relationships.wife = family2.relationships.wife;
           individuals[family2.relationships.wife].relationships.spouse =
@@ -34,12 +31,11 @@ const reconcileFamilyData = (parsedData) => {
           individuals[family1.relationships.husband].relationships.spouse =
             family2.relationships.wife;
 
-          // Update child's relationships
           const child = individuals[commonChild];
           child.relationships.father = family1.relationships.husband;
           child.relationships.mother = family2.relationships.wife;
 
-          delete families[familyId2]; // Remove the redundant family
+          delete families[familyId2];
         } else if (family2.relationships.husband && family1.relationships.wife) {
           family2.relationships.wife = family1.relationships.wife;
           individuals[family1.relationships.wife].relationships.spouse =
@@ -47,12 +43,11 @@ const reconcileFamilyData = (parsedData) => {
           individuals[family2.relationships.husband].relationships.spouse =
             family1.relationships.wife;
 
-          // Update child's relationships
           const child = individuals[commonChild];
           child.relationships.father = family2.relationships.husband;
           child.relationships.mother = family1.relationships.wife;
 
-          delete families[familyId1]; // Remove the redundant family
+          delete families[familyId1];
         }
 
         console.log("Updated family:", family1);
@@ -65,6 +60,7 @@ const reconcileFamilyData = (parsedData) => {
 };
 
 const GedcomUploader = ({ onDataLoaded }) => {
+  const navigate = useNavigate();
   const [gedcomData, setGedcomData] = useState(null);
 
   const onFileChange = async (event) => {
@@ -72,19 +68,10 @@ const GedcomUploader = ({ onDataLoaded }) => {
     if (!file) return;
 
     try {
-      // Parse the GEDCOM file
       const parsedData = await handleFileUpload(file);
-
-      // Reconcile family data
       const reconciledData = reconcileFamilyData(parsedData);
       setGedcomData(reconciledData);
-
-      // Pass the data to the parent component
-      if (onDataLoaded) {
-        onDataLoaded(reconciledData);
-      }
-
-      console.log("Reconciled GEDCOM Data:", reconciledData); // Debugging
+      if (onDataLoaded) onDataLoaded(reconciledData);
     } catch (error) {
       console.error("Failed to parse GEDCOM file:", error);
     }
@@ -94,23 +81,23 @@ const GedcomUploader = ({ onDataLoaded }) => {
     const { id, data, relationships } = individual;
 
     const children = relationships?.children?.map(
-      (childId) => cleanName(allIndividuals[childId]?.data.NAME)
+      (childId) => cleanName(allIndividuals[childId]?.data.NAME || "Unknown")
     );
 
-    const spouse =
-      relationships?.spouse
-        ? cleanName(allIndividuals[relationships.spouse]?.data.NAME)
-        : "None";
+    const spouse = relationships?.spouse
+      ? cleanName(allIndividuals[relationships.spouse]?.data.NAME || "None")
+      : "None";
 
-    const father =
-      relationships?.father
-        ? cleanName(allIndividuals[relationships.father]?.data.NAME)
-        : "Unknown";
+    const father = relationships?.father
+      ? cleanName(allIndividuals[relationships.father]?.data.NAME || "Unknown")
+      : "Unknown";
 
-    const mother =
-      relationships?.mother
-        ? cleanName(allIndividuals[relationships.mother]?.data.NAME)
-        : "Unknown";
+    const mother = relationships?.mother
+      ? cleanName(allIndividuals[relationships.mother]?.data.NAME || "Unknown")
+      : "Unknown";
+
+    // Determine if Alive or Dead
+    const isAlive = !data.DEAT;
 
     return (
       <div
@@ -125,12 +112,20 @@ const GedcomUploader = ({ onDataLoaded }) => {
           textAlign: "left",
         }}
       >
-        <h3 style={{ margin: "0 0 10px", color: "#333" }}>{cleanName(data.NAME)}</h3>
+        <h3 style={{ margin: "0 0 10px", color: "#333" }}>
+          {cleanName(data.NAME || "Unknown")}
+        </h3>
         <p>
           <strong>Gender:</strong> {data.SEX || "Unknown"}
         </p>
-        <p>
+        {/* <p>
           <strong>Birth Date:</strong> {data.BIRT || "Unknown"}
+        </p> */}
+        <p>
+          <strong>Birth Date:</strong> {data.DATE || "Unknown"}
+        </p>
+        <p>
+          <strong>Status:</strong> {isAlive ? "Alive" : "Dead"}
         </p>
         <p>
           <strong>Father:</strong> {father}
@@ -182,6 +177,23 @@ const GedcomUploader = ({ onDataLoaded }) => {
       />
       {gedcomData && (
         <div>
+          <button
+            onClick={() => navigate("/diagram")}
+            style={{
+              marginTop: "30px",
+              padding: "12px 25px",
+              fontSize: "16px",
+              fontWeight: "bold",
+              color: "#fff",
+              backgroundColor: "#007bff",
+              border: "none",
+              borderRadius: "5px",
+              cursor: "pointer",
+              boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)",
+            }}
+          >
+            View Family Tree
+          </button>
           <h2 style={{ fontSize: "22px", margin: "20px 0", color: "#007bff" }}>
             Parsed GEDCOM Data
           </h2>
