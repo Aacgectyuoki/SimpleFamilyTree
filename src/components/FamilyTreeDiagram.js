@@ -68,16 +68,17 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
             const edgeMap = [];
             if (individual.relationships?.father) {
               const edgeId = `${individual.relationships.father}-${id}`;
-              edgeMap.push([edgeId, { id: edgeId, source: individual.relationships.father, target: id }]); // Correct pair structure
+              edgeMap.push([edgeId, { id: edgeId, source: individual.relationships.father, target: id }]);
             }
             if (individual.relationships?.mother) {
               const edgeId = `${individual.relationships.mother}-${id}`;
-              edgeMap.push([edgeId, { id: edgeId, source: individual.relationships.mother, target: id }]); // Correct pair structure
+              edgeMap.push([edgeId, { id: edgeId, source: individual.relationships.mother, target: id }]);
             }
-            return edgeMap; // Ensure this returns an array of [key, value] pairs
+            return edgeMap;
           })
-        ).entries() // Use entries() instead of values() to ensure compatibility
-      ).map(([key, value]) => value); // Extract only the values for edges
+        ).entries()
+      ).map(([key, value]) => value);
+      console.log("Constructed edges:", edges);
 
       const layoutedData = getLayoutedElements(nodes, edges);
       setData(layoutedData);
@@ -86,13 +87,14 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
 
   const handleNodeClick = (event, node) => {
     console.log("Node clicked:", node);
+
     setData((prevData) => {
       const relatedNodes = new Set();
 
       // Add the clicked node
       relatedNodes.add(node.id);
 
-      // Add parents
+      // Add parents (father and mother)
       prevData.edges.forEach((edge) => {
         if (edge.target === node.id) {
           relatedNodes.add(edge.source); // Add parent
@@ -103,6 +105,19 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
       prevData.edges.forEach((edge) => {
         if (edge.source === node.id) {
           relatedNodes.add(edge.target); // Add child
+        }
+      });
+
+      // Ensure both parents are included if clicking on a child
+      prevData.nodes.forEach((n) => {
+        if (n.id === node.id) {
+          const individual = gedcomData.individuals[node.id];
+          if (individual.relationships?.father) {
+            relatedNodes.add(individual.relationships.father);
+          }
+          if (individual.relationships?.mother) {
+            relatedNodes.add(individual.relationships.mother);
+          }
         }
       });
 
@@ -125,6 +140,7 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
       return { nodes: updatedNodes, edges: updatedEdges };
     });
   };
+
 
   return (
     <ReactFlowProvider>
