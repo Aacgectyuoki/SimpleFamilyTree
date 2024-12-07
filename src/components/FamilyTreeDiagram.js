@@ -72,8 +72,8 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
                   }}
                 />
               )}
-              <h3>{individual.data.NAME || "Unknown"}</h3>
-              <p>Born: {individual.data.BIRT || "Unknown"}</p>
+              <h3>{individual.data.NAME?.replace(/\//g, "") || "Unknown"}</h3> {/* Remove slashes */}
+              <p>Born: {individual.data.DATE || "Unknown"}</p>
               <p>Place: {individual.data.PLAC || "Unknown"}</p>
             </div>
           ),
@@ -83,7 +83,7 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
           height: nodeHeight,
         },
         hidden: false,
-      }));
+      }));      
 
       const edges = Object.entries(gedcomData.individuals)
         .flatMap(([id, individual]) => {
