@@ -53,7 +53,7 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
       const nodes = Object.entries(gedcomData.individuals).map(([id, individual]) => {
         const isAlive = !individual.data.DEAT; // Determine if the person is alive
         const gender = individual.data.SEX; // Get gender
-
+  
         // Define colors based on gender and life status
         let backgroundColor = "#e0f7ff"; // Default: very light blue for alive males
         if (!isAlive) {
@@ -62,15 +62,24 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
         if (gender === "F") {
           backgroundColor = isAlive ? "#fde0f7" : "#f0a4d8"; // Very light magenta for alive females, light magenta for deceased
         }
-
+  
         return {
           id,
           data: {
             label: (
-              <div className="node-box">
-                <h3>{individual.data.NAME?.replace(/\//g, "") || "Unknown"}</h3> {/* Remove slashes */}
-                <p>Born: {individual.data.DATE || "Unknown"}</p>
-                <p>Place: {individual.data.PLAC || "Unknown"}</p>
+              <div
+                style={{
+                  color: "#000000", // Black text for better contrast
+                  fontWeight: "bold",
+                  textAlign: "center",
+                  padding: "10px 0",
+                  height: "100%", // Ensure full card height is clickable
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                {individual.data.NAME?.replace(/\//g, "") || "Unknown"} {/* Remove slashes */}
               </div>
             ),
           },
@@ -78,11 +87,13 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
             width: nodeWidth,
             height: nodeHeight,
             backgroundColor,
+            borderRadius: "10px", // Optional: Add rounded corners
+            boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)", // Optional: Add shadow for depth
           },
           hidden: false,
         };
       });
-
+  
       const edges = Object.entries(gedcomData.individuals)
         .flatMap(([id, individual]) => {
           const connections = [];
@@ -102,17 +113,18 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
           }
           return connections;
         });
-
+  
       const layoutedData = getLayoutedElements(nodes, edges);
+  
       setData(layoutedData);
     }
-  }, [gedcomData]);
-
-
+  }, [gedcomData]);  
+  
+  
   const handleNodeClick = (event, node) => {
     console.log("Node clicked:", node);
     setSelectedNodeId(node.id);
-
+  
     // Center the selected node
     if (reactFlowInstance.current) {
       const nodePosition = node.position;
@@ -127,41 +139,49 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
   
     setData((prevData) => {
       const relatedNodes = new Set();
+      const currentIndividual = gedcomData.individuals[node.id];
   
       // Add the clicked node
       relatedNodes.add(node.id);
   
       // Add parents
-      prevData.edges.forEach((edge) => {
-        if (edge.target === node.id) {
-          relatedNodes.add(edge.source); // Add parent
-        }
-      });
-  
-      // Add children
-      prevData.edges.forEach((edge) => {
-        if (edge.source === node.id) {
-          relatedNodes.add(edge.target); // Add child
-        }
-      });
-  
-      // Add spouse if available
-      const spouseId = gedcomData.individuals[node.id]?.relationships?.spouse;
-      if (spouseId) {
-        relatedNodes.add(spouseId);
+      if (currentIndividual?.relationships?.father) {
+        relatedNodes.add(currentIndividual.relationships.father);
+      }
+      if (currentIndividual?.relationships?.mother) {
+        relatedNodes.add(currentIndividual.relationships.mother);
       }
   
-      // Update nodes
+      // Add children
+      if (currentIndividual?.relationships?.children) {
+        currentIndividual.relationships.children.forEach((childId) => {
+          relatedNodes.add(childId);
+        });
+      }
+  
+      // Add spouse if available
+      if (currentIndividual?.relationships?.spouse) {
+        relatedNodes.add(currentIndividual.relationships.spouse);
+      }
+  
+      // Highlight related nodes
       const updatedNodes = prevData.nodes.map((n) => ({
         ...n,
-        hidden: !relatedNodes.has(n.id), // Hide nodes not in the related set
+        style: {
+          ...n.style,
+          opacity: relatedNodes.has(n.id) ? 1 : 0.3, // Dim unrelated nodes
+          border: relatedNodes.has(n.id) ? "2px solid black" : "none", // Highlight related nodes
+        },
       }));
   
-      // Update edges
-      const updatedEdges = prevData.edges.filter(
-        (edge) =>
-          relatedNodes.has(edge.source) && relatedNodes.has(edge.target) // Only keep edges between related nodes
-      );
+      // Highlight edges connecting related nodes
+      const updatedEdges = prevData.edges.map((edge) => ({
+        ...edge,
+        style: {
+          stroke: relatedNodes.has(edge.source) && relatedNodes.has(edge.target) ? "#000" : "#ccc", // Highlight related edges
+          strokeWidth: relatedNodes.has(edge.source) && relatedNodes.has(edge.target) ? 2 : 1,
+        },
+      }));
   
       console.log("Final Related Nodes:", Array.from(relatedNodes));
       console.log("Updated Nodes:", updatedNodes);
@@ -170,6 +190,7 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
       return { nodes: updatedNodes, edges: updatedEdges };
     });
   };
+  
   
 
   return (
