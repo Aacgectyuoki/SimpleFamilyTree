@@ -14,9 +14,9 @@ dagreGraph.setDefaultEdgeLabel(() => ({}));
 const nodeWidth = 200;
 const nodeHeight = 100;
 
-// Helper to calculate layout
+// Helper function to calculate layout
 const getLayoutedElements = (nodes, edges) => {
-  dagreGraph.setGraph({ rankdir: "TB" });
+  dagreGraph.setGraph({ rankdir: "TB", marginx: 20, marginy: 20 });
 
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
@@ -39,21 +39,43 @@ const getLayoutedElements = (nodes, edges) => {
     return node;
   });
 
-
   return { nodes: layoutedNodes, edges };
+};
+
+// Helper to determine node styles
+const getNodeStyle = (individual) => {
+  const isAlive = !individual.data.DEAT;
+  const gender = individual.data.SEX;
+
+  let backgroundColor = "#e0f7ff"; // Default: light blue for alive males
+  if (!isAlive) {
+    backgroundColor = "#a4d8f0"; // Darker blue for deceased males
+  }
+  if (gender === "F") {
+    backgroundColor = isAlive ? "#fde0f7" : "#f0a4d8"; // Light magenta for females
+  }
+
+  return {
+    width: nodeWidth,
+    height: nodeHeight,
+    backgroundColor,
+    border: "1px solid #ddd",
+    borderRadius: "8px",
+  };
 };
 
 const FamilyTreeDiagram = ({ gedcomData }) => {
   const [data, setData] = useState({ nodes: [], edges: [] });
-  const [selectedNodeId, setSelectedNodeId] = useState(null);
   const reactFlowInstance = useRef(null);
 
   useEffect(() => {
     if (gedcomData) {
       const nodes = Object.entries(gedcomData.individuals).map(([id, individual]) => {
+        const birthDate = individual.data.BIRT?.DATE || "Date not available"; // Safely access birth date
+        const birthPlace = individual.data.BIRT?.PLAC || "Place not available"; // Safely access birth place
         const isAlive = !individual.data.DEAT; // Determine if the person is alive
         const gender = individual.data.SEX; // Get gender
-
+  
         // Define colors based on gender and life status
         let backgroundColor = "#e0f7ff"; // Default: very light blue for alive males
         if (!isAlive) {
@@ -62,15 +84,15 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
         if (gender === "F") {
           backgroundColor = isAlive ? "#fde0f7" : "#f0a4d8"; // Very light magenta for alive females, light magenta for deceased
         }
-
+  
         return {
           id,
           data: {
             label: (
               <div className="node-box">
                 <h3>{individual.data.NAME?.replace(/\//g, "") || "Unknown"}</h3> {/* Remove slashes */}
-                <p>Born: {individual.data.DATE || "Unknown"}</p>
-                <p>Place: {individual.data.PLAC || "Unknown"}</p>
+                <p>Born: {birthDate}</p> {/* Display the birth date */}
+                <p>Place: {birthPlace}</p> {/* Display the birth place */}
               </div>
             ),
           },
@@ -78,11 +100,15 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
             width: nodeWidth,
             height: nodeHeight,
             backgroundColor,
+            border:
+              birthDate === "Date not available" || birthPlace === "Place not available"
+                ? "2px solid red" // Highlight nodes with missing data
+                : "1px solid #ddd",
+            borderRadius: "8px",
           },
-          hidden: false,
         };
       });
-
+  
       const edges = Object.entries(gedcomData.individuals)
         .flatMap(([id, individual]) => {
           const connections = [];
@@ -96,81 +122,60 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
           if (individual.relationships?.mother) {
             connections.push({
               id: `${individual.relationships.mother}-${id}`,
-              source: individual.relationships.mother,
-              target: id,
+              source: id,
             });
           }
           return connections;
         });
-
+  
       const layoutedData = getLayoutedElements(nodes, edges);
       setData(layoutedData);
     }
   }, [gedcomData]);
 
-
   const handleNodeClick = (event, node) => {
-    console.log("Node clicked:", node);
-    setSelectedNodeId(node.id);
+    if (!reactFlowInstance.current) return;
 
-    // Center the selected node
-    if (reactFlowInstance.current) {
-      const nodePosition = node.position;
-      reactFlowInstance.current.setCenter(
-        nodePosition.x + nodeWidth / 2, // Center the node horizontally
-        nodePosition.y + nodeHeight / 2, // Center the node vertically
-        {
-          zoom: 1.5, // Optional: Adjust zoom level
-        }
-      );
-    }
-  
+    console.log("Node clicked:", node);
+
+    const nodePosition = node.position;
+    reactFlowInstance.current.setCenter(
+      nodePosition.x + nodeWidth / 2,
+      nodePosition.y + nodeHeight / 2,
+      { zoom: 1.5 }
+    );
+
+    // Filter nodes and edges related to the clicked node
     setData((prevData) => {
-      const relatedNodes = new Set();
-  
-      // Add the clicked node
-      relatedNodes.add(node.id);
-  
-      // Add parents
+      const relatedNodes = new Set([node.id]);
+
+      // Add parents and children
       prevData.edges.forEach((edge) => {
-        if (edge.target === node.id) {
-          relatedNodes.add(edge.source); // Add parent
-        }
+        if (edge.target === node.id) relatedNodes.add(edge.source); // Parents
+        if (edge.source === node.id) relatedNodes.add(edge.target); // Children
       });
-  
-      // Add children
-      prevData.edges.forEach((edge) => {
-        if (edge.source === node.id) {
-          relatedNodes.add(edge.target); // Add child
-        }
-      });
-  
-      // Add spouse if available
+
+      // Add spouse
       const spouseId = gedcomData.individuals[node.id]?.relationships?.spouse;
       if (spouseId) {
         relatedNodes.add(spouseId);
       }
-  
+
       // Update nodes
       const updatedNodes = prevData.nodes.map((n) => ({
         ...n,
-        hidden: !relatedNodes.has(n.id), // Hide nodes not in the related set
+        hidden: !relatedNodes.has(n.id),
       }));
-  
+
       // Update edges
       const updatedEdges = prevData.edges.filter(
         (edge) =>
-          relatedNodes.has(edge.source) && relatedNodes.has(edge.target) // Only keep edges between related nodes
+          relatedNodes.has(edge.source) && relatedNodes.has(edge.target)
       );
-  
-      console.log("Final Related Nodes:", Array.from(relatedNodes));
-      console.log("Updated Nodes:", updatedNodes);
-      console.log("Updated Edges:", updatedEdges);
-  
+
       return { nodes: updatedNodes, edges: updatedEdges };
     });
   };
-  
 
   return (
     <ReactFlowProvider>
@@ -179,11 +184,11 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
           nodes={data.nodes}
           edges={data.edges}
           onNodeClick={handleNodeClick}
-          onInit={(instance) => (reactFlowInstance.current = instance)} // Store React Flow instance
+          onInit={(instance) => (reactFlowInstance.current = instance)}
           fitView
           style={{ background: "#f8f9fa" }}
         >
-          <Background />
+          <Background gap={20} />
           <Controls />
         </ReactFlow>
       </div>

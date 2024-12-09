@@ -13,14 +13,15 @@ export const parseGedcomFile = async (gedcomContent) => {
 
   let currentEntity = null;
   let currentEntityType = null;
+  let currentTag = null;
+  let currentParentTag = null; // Explicit parent context for BIRT, DEAT, MARR, etc.
 
-  // Parse GEDCOM lines
   lines.forEach((line) => {
     const [level, tag, ...rest] = line.trim().split(" ");
     const value = rest.join(" ");
 
     if (level === "0") {
-      // Save the previous entity
+      // Store the previous entity before starting a new one
       if (currentEntity) {
         if (currentEntityType === "INDI") individuals[currentEntity.id] = currentEntity;
         if (currentEntityType === "FAM") families[currentEntity.id] = currentEntity;
@@ -37,19 +38,48 @@ export const parseGedcomFile = async (gedcomContent) => {
         currentEntity = null;
         currentEntityType = null;
       }
+      currentTag = null;
+      currentParentTag = null; // Reset parent context when a new entity begins
     } else if (currentEntity) {
-      // Populate individual or family data
-      if (currentEntityType === "INDI") {
+      if (tag === 'BIRT' || tag === 'DEAT' || tag === 'BURI' || tag === 'MARR') {
+        // Create nested objects for BIRT, DEAT, etc.
+        currentEntity.data[tag] = currentEntity.data[tag] || {};
+        currentParentTag = tag; // Set current parent context (like BIRT, DEAT, etc.)
+      } else if (['DATE', 'PLAC', 'CAUS'].includes(tag)) {
+        // Attach DATE, PLAC, and CAUS to the current parent context
+        if (currentParentTag && currentEntity.data[currentParentTag]) {
+          currentEntity.data[currentParentTag][tag] = value;
+        } else {
+          currentEntity.data[tag] = value; // If no parent context, store it at the root
+        }
+      } else if (tag === 'CHIL') {
+        // Associate children with families
+        currentEntity.relationships.children.push(value);
+      } else if (tag === 'HUSB') {
+        // Associate husband with family
+        currentEntity.relationships.husband = value;
+      } else if (tag === 'WIFE') {
+        // Associate wife with family
+        currentEntity.relationships.wife = value;
+      } else if (tag === 'CONC') {
+        // Handle CONC (concatenation) for the most recent tag
+        if (currentTag && currentEntity.data[currentTag]) {
+          currentEntity.data[currentTag] += ` ${value}`;
+        }
+      } else if (tag === 'CONT') {
+        // Handle CONT (continuation) for the most recent tag
+        if (currentTag && currentEntity.data[currentTag]) {
+          currentEntity.data[currentTag] += `\n${value}`;
+        }
+      } else {
+        // Store simple key-value pairs
         currentEntity.data[tag] = value;
-      } else if (currentEntityType === "FAM") {
-        if (tag === "HUSB") currentEntity.relationships.husband = value;
-        else if (tag === "WIFE") currentEntity.relationships.wife = value;
-        else if (tag === "CHIL") currentEntity.relationships.children.push(value);
+        currentTag = tag; // Track the most recent tag
       }
     }
   });
 
-  // Add the last entity
+  // Store the last entity
   if (currentEntity) {
     if (currentEntityType === "INDI") individuals[currentEntity.id] = currentEntity;
     if (currentEntityType === "FAM") families[currentEntity.id] = currentEntity;
@@ -61,12 +91,12 @@ export const parseGedcomFile = async (gedcomContent) => {
 
     if (husband && individuals[husband]) {
       individuals[husband].relationships.spouse = wife || null;
-      individuals[husband].relationships.children = children;
+      individuals[husband].relationships.children = [...(individuals[husband].relationships.children || []), ...children];
     }
 
     if (wife && individuals[wife]) {
       individuals[wife].relationships.spouse = husband || null;
-      individuals[wife].relationships.children = children;
+      individuals[wife].relationships.children = [...(individuals[wife].relationships.children || []), ...children];
     }
 
     children.forEach((child) => {
@@ -87,9 +117,9 @@ export const parseGedcomFile = async (gedcomContent) => {
  */
 export const handleFileUpload = async (file) => {
   try {
-    const text = await file.text(); // Read the file's content
-    const parsedData = await parseGedcomFile(text); // Parse the GEDCOM content
-    console.log("Parsed Data:", parsedData);
+    const text = await file.text();
+    const parsedData = await parseGedcomFile(text);
+    console.log("Parsed Data:", JSON.stringify(parsedData, null, 2));
     return parsedData;
   } catch (err) {
     console.error("Error processing file:", err);
