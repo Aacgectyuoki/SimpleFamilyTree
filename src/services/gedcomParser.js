@@ -1,5 +1,3 @@
-// gedcomParser.js
-
 /**
  * Parses GEDCOM content and extracts individuals and families.
  * Maps family relationships (children, parents, spouses).
@@ -41,32 +39,30 @@ export const parseGedcomFile = async (gedcomContent) => {
       currentTag = null;
       currentParentTag = null; // Reset parent context when a new entity begins
     } else if (currentEntity) {
-      if (tag === 'BIRT' || tag === 'DEAT' || tag === 'BURI' || tag === 'MARR') {
-        // Create nested objects for BIRT, DEAT, etc.
+      if (tag === "BIRT" || tag === "DEAT" || tag === "BURI" || tag === "MARR" || tag === "CHAN") {
+        // Create nested objects for BIRT, DEAT, CHAN, etc.
         currentEntity.data[tag] = currentEntity.data[tag] || {};
-        currentParentTag = tag; // Set current parent context (like BIRT, DEAT, etc.)
-      } else if (['DATE', 'PLAC', 'CAUS'].includes(tag)) {
-        // Attach DATE, PLAC, and CAUS to the current parent context
+        currentParentTag = tag; // Set current parent context (e.g., BIRT)
+      } else if (["DATE", "PLAC", "CAUS", "TIME"].includes(tag)) {
+        // Attach DATE, PLAC, and TIME to the current parent context
         if (currentParentTag && currentEntity.data[currentParentTag]) {
           currentEntity.data[currentParentTag][tag] = value;
-        } else {
-          currentEntity.data[tag] = value; // If no parent context, store it at the root
         }
-      } else if (tag === 'CHIL') {
+      } else if (tag === "CHIL") {
         // Associate children with families
         currentEntity.relationships.children.push(value);
-      } else if (tag === 'HUSB') {
+      } else if (tag === "HUSB") {
         // Associate husband with family
         currentEntity.relationships.husband = value;
-      } else if (tag === 'WIFE') {
+      } else if (tag === "WIFE") {
         // Associate wife with family
         currentEntity.relationships.wife = value;
-      } else if (tag === 'CONC') {
+      } else if (tag === "CONC") {
         // Handle CONC (concatenation) for the most recent tag
         if (currentTag && currentEntity.data[currentTag]) {
           currentEntity.data[currentTag] += ` ${value}`;
         }
-      } else if (tag === 'CONT') {
+      } else if (tag === "CONT") {
         // Handle CONT (continuation) for the most recent tag
         if (currentTag && currentEntity.data[currentTag]) {
           currentEntity.data[currentTag] += `\n${value}`;
@@ -89,22 +85,42 @@ export const parseGedcomFile = async (gedcomContent) => {
   Object.values(families).forEach((family) => {
     const { husband, wife, children } = family.relationships;
 
-    if (husband && individuals[husband]) {
-      individuals[husband].relationships.spouse = wife || null;
-      individuals[husband].relationships.children = [...(individuals[husband].relationships.children || []), ...children];
-    }
+    children.forEach((childId) => {
+      if (individuals[childId]) {
+        if (husband && individuals[husband]) {
+          individuals[childId].relationships.father = husband;
+          individuals[husband].relationships.children =
+            individuals[husband].relationships.children || [];
+          if (!individuals[husband].relationships.children.includes(childId)) {
+            individuals[husband].relationships.children.push(childId);
+          }
+        }
 
-    if (wife && individuals[wife]) {
-      individuals[wife].relationships.spouse = husband || null;
-      individuals[wife].relationships.children = [...(individuals[wife].relationships.children || []), ...children];
-    }
-
-    children.forEach((child) => {
-      if (individuals[child]) {
-        individuals[child].relationships.father = husband || null;
-        individuals[child].relationships.mother = wife || null;
+        if (wife && individuals[wife]) {
+          individuals[childId].relationships.mother = wife;
+          individuals[wife].relationships.children =
+            individuals[wife].relationships.children || [];
+          if (!individuals[wife].relationships.children.includes(childId)) {
+            individuals[wife].relationships.children.push(childId);
+          }
+        }
       }
     });
+  });
+
+  // Merge families where parents share children
+  Object.values(individuals).forEach((individual) => {
+    const { father, mother } = individual.relationships;
+    if (father && mother) {
+      // Ensure both parents share the same children
+      individuals[father].relationships.children = [
+        ...new Set([
+          ...(individuals[father].relationships.children || []),
+          ...individuals[mother].relationships.children,
+        ]),
+      ];
+      individuals[mother].relationships.children = individuals[father].relationships.children;
+    }
   });
 
   return { individuals, families };

@@ -54,6 +54,14 @@ const GedcomUploader = ({ onDataLoaded }) => {
         onChange={onFileChange}
         style={{ marginBottom: "20px" }}
       />
+
+      <button
+        onClick={() => navigate("/diagram")}
+        style={{ marginTop: "30px", padding: "12px 25px" }}
+      >
+        View Family Tree
+      </button>
+
       {gedcomData && (
         <div>
           <h2>Parsed GEDCOM Data</h2>
@@ -62,12 +70,6 @@ const GedcomUploader = ({ onDataLoaded }) => {
           )}
         </div>
       )}
-      <button
-        onClick={() => navigate("/diagram")}
-        style={{ marginTop: "30px", padding: "12px 25px" }}
-      >
-        View Family Tree
-      </button>
     </div>
   );
 };
