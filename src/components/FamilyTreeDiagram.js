@@ -39,13 +39,12 @@ const getLayoutedElements = (nodes, edges) => {
     return node;
   });
 
-
   return { nodes: layoutedNodes, edges };
 };
 
 const FamilyTreeDiagram = ({ gedcomData }) => {
   const [data, setData] = useState({ nodes: [], edges: [] });
-  const [selectedNodeId, setSelectedNodeId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const reactFlowInstance = useRef(null);
 
   useEffect(() => {
@@ -53,7 +52,7 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
       const nodes = Object.entries(gedcomData.individuals).map(([id, individual]) => {
         const isAlive = !individual.data.DEAT; // Determine if the person is alive
         const gender = individual.data.SEX; // Get gender
-  
+
         // Define colors based on gender and life status
         let backgroundColor = "#e0f7ff"; // Default: very light blue for alive males
         if (!isAlive) {
@@ -62,38 +61,27 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
         if (gender === "F") {
           backgroundColor = isAlive ? "#fde0f7" : "#f0a4d8"; // Very light magenta for alive females, light magenta for deceased
         }
-  
+
         return {
           id,
           data: {
-            label: (
-              <div
-                style={{
-                  color: "#000000", // Black text for better contrast
-                  fontWeight: "bold",
-                  textAlign: "center",
-                  padding: "10px 0",
-                  height: "100%", // Ensure full card height is clickable
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                {individual.data.NAME?.replace(/\//g, "") || "Unknown"} {/* Remove slashes */}
-              </div>
-            ),
+            label: individual.data.NAME?.replace(/\//g, "") || "Unknown", // Remove slashes
           },
           style: {
             width: nodeWidth,
             height: nodeHeight,
             backgroundColor,
-            borderRadius: "10px", // Optional: Add rounded corners
-            boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)", // Optional: Add shadow for depth
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "16px",
+            fontWeight: "bold",
+            color: "black",
           },
-          hidden: false,
+          position: { x: 0, y: 0 }, // Default position; layouted later
         };
       });
-  
+
       const edges = Object.entries(gedcomData.individuals)
         .flatMap(([id, individual]) => {
           const connections = [];
@@ -113,58 +101,39 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
           }
           return connections;
         });
-  
+
       const layoutedData = getLayoutedElements(nodes, edges);
-  
       setData(layoutedData);
     }
-  }, [gedcomData]);  
-  
-  
-  const handleNodeClick = (event, node) => {
-    console.log("Node clicked:", node);
-    setSelectedNodeId(node.id);
-  
-    // Center the selected node
-    if (reactFlowInstance.current) {
-      const nodePosition = node.position;
-      reactFlowInstance.current.setCenter(
-        nodePosition.x + nodeWidth / 2, // Center the node horizontally
-        nodePosition.y + nodeHeight / 2, // Center the node vertically
-        {
-          zoom: 1.5, // Optional: Adjust zoom level
-        }
-      );
+  }, [gedcomData]);
+
+  const highlightRelatedNodes = (nodeId) => {
+    const currentIndividual = gedcomData.individuals[nodeId];
+
+    const relatedNodes = new Set();
+    relatedNodes.add(nodeId);
+
+    // Add parents
+    if (currentIndividual?.relationships?.father) {
+      relatedNodes.add(currentIndividual.relationships.father);
     }
-  
+    if (currentIndividual?.relationships?.mother) {
+      relatedNodes.add(currentIndividual.relationships.mother);
+    }
+
+    // Add children
+    if (currentIndividual?.relationships?.children) {
+      currentIndividual.relationships.children.forEach((childId) => {
+        relatedNodes.add(childId);
+      });
+    }
+
+    // Add spouse if available
+    if (currentIndividual?.relationships?.spouse) {
+      relatedNodes.add(currentIndividual.relationships.spouse);
+    }
+
     setData((prevData) => {
-      const relatedNodes = new Set();
-      const currentIndividual = gedcomData.individuals[node.id];
-  
-      // Add the clicked node
-      relatedNodes.add(node.id);
-  
-      // Add parents
-      if (currentIndividual?.relationships?.father) {
-        relatedNodes.add(currentIndividual.relationships.father);
-      }
-      if (currentIndividual?.relationships?.mother) {
-        relatedNodes.add(currentIndividual.relationships.mother);
-      }
-  
-      // Add children
-      if (currentIndividual?.relationships?.children) {
-        currentIndividual.relationships.children.forEach((childId) => {
-          relatedNodes.add(childId);
-        });
-      }
-  
-      // Add spouse if available
-      if (currentIndividual?.relationships?.spouse) {
-        relatedNodes.add(currentIndividual.relationships.spouse);
-      }
-  
-      // Highlight related nodes
       const updatedNodes = prevData.nodes.map((n) => ({
         ...n,
         style: {
@@ -173,8 +142,7 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
           border: relatedNodes.has(n.id) ? "2px solid black" : "none", // Highlight related nodes
         },
       }));
-  
-      // Highlight edges connecting related nodes
+
       const updatedEdges = prevData.edges.map((edge) => ({
         ...edge,
         style: {
@@ -182,25 +150,100 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
           strokeWidth: relatedNodes.has(edge.source) && relatedNodes.has(edge.target) ? 2 : 1,
         },
       }));
-  
-      console.log("Final Related Nodes:", Array.from(relatedNodes));
-      console.log("Updated Nodes:", updatedNodes);
-      console.log("Updated Edges:", updatedEdges);
-  
+
       return { nodes: updatedNodes, edges: updatedEdges };
     });
   };
-  
-  
+
+  const handleSearch = () => {
+    const targetNode = data.nodes.find((node) =>
+      node.data.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    if (targetNode && reactFlowInstance.current) {
+      const { x, y } = targetNode.position;
+      reactFlowInstance.current.setCenter(
+        x + nodeWidth / 2, // Center horizontally
+        y + nodeHeight / 2, // Center vertically
+        {
+          zoom: 1.5, // Optional: Adjust zoom level
+        }
+      );
+      highlightRelatedNodes(targetNode.id); // Highlight the searched person and related nodes
+    } else {
+      alert("Person not found.");
+    }
+  };
+
+  const handleNodeClick = (event, node) => {
+    console.log("Node clicked:", node);
+    highlightRelatedNodes(node.id);
+  };
+
+  const handleKeyPress = (event) => {
+    if (event.key === "Enter") {
+      handleSearch();
+    }
+  };
+
+  const handlePaneClick = () => {
+    setData((prevData) => ({
+      nodes: prevData.nodes.map((n) => ({
+        ...n,
+        style: {
+          ...n.style,
+          opacity: 1, // Reset all nodes to fully visible
+          border: "none", // Remove border highlights
+        },
+      })),
+      edges: prevData.edges.map((e) => ({
+        ...e,
+        style: {
+          stroke: "#ccc", // Reset all edges to default stroke
+          strokeWidth: 1, // Default stroke width
+        },
+      })),
+    }));
+  };
 
   return (
     <ReactFlowProvider>
       <div style={{ width: "100%", height: "100vh" }}>
+        <div style={{ padding: "10px", backgroundColor: "#f8f9fa", zIndex: 10 }}>
+          <input
+            type="text"
+            placeholder="Search for a person..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyPress={handleKeyPress}
+            style={{
+              padding: "8px",
+              borderRadius: "5px",
+              border: "1px solid #ccc",
+              marginRight: "10px",
+              width: "250px",
+            }}
+          />
+          <button
+            onClick={handleSearch}
+            style={{
+              padding: "8px 16px",
+              borderRadius: "5px",
+              backgroundColor: "#007bff",
+              color: "#fff",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            Search
+          </button>
+        </div>
         <ReactFlow
           nodes={data.nodes}
           edges={data.edges}
           onNodeClick={handleNodeClick}
-          onInit={(instance) => (reactFlowInstance.current = instance)} // Store React Flow instance
+          onPaneClick={handlePaneClick}
+          onInit={(instance) => (reactFlowInstance.current = instance)}
           fitView
           style={{ background: "#f8f9fa" }}
         >
