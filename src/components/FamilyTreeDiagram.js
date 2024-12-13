@@ -44,8 +44,10 @@ const getLayoutedElements = (nodes, edges) => {
 
 const FamilyTreeDiagram = ({ gedcomData }) => {
   const [data, setData] = useState({ nodes: [], edges: [] });
+  const [selectedPerson, setSelectedPerson] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState([]);
+  const [language, setLanguage] = useState("en");
   const reactFlowInstance = useRef(null);
 
   useEffect(() => {
@@ -58,10 +60,16 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
         if (!isAlive) backgroundColor = "#a4d8f0";
         if (gender === "F") backgroundColor = isAlive ? "#fde0f7" : "#f0a4d8";
 
+        const name = language === 'ar' 
+          ? individual.data.NAME_ARABIC || individual.data.NAME 
+          : individual.data.NAME?.replace(/\//g, "") || "Unknown";
+
+
         return {
           id,
           data: {
-            label: individual.data.NAME?.replace(/\//g, "") || "Unknown",
+            label: name,
+            // label: individual.data.NAME?.replace(/\//g, "") || "Unknown",
           },
           style: {
             width: nodeWidth,
@@ -101,10 +109,16 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
       const layoutedData = getLayoutedElements(nodes, edges);
       setData(layoutedData);
     }
-  }, [gedcomData]);
+  }, [gedcomData, language]);
+
+  const handleLanguageToggle = () => {
+    setLanguage((prevLang) => (prevLang === "en" ? "ar" : "en"));
+  };
 
   const highlightRelatedNodes = (nodeId) => {
     const currentIndividual = gedcomData.individuals[nodeId];
+
+    // setSelectedPerson(currentIndividual);
 
     const relatedNodes = new Set();
     relatedNodes.add(nodeId);
@@ -170,6 +184,13 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
     setSearchTerm("");
   };
 
+  const handleNodeClick = (event, node) => {
+    const selectedIndividual = gedcomData.individuals[node.id]; // Retrieve the full individual object
+    setSelectedPerson(selectedIndividual); // Set the full object, not just the ID
+    highlightRelatedNodes(node.id); // Highlight the node and its relatives
+  };
+  
+
   const handlePaneClick = () => {
     setData((prevData) => ({
       nodes: prevData.nodes.map((n) => ({
@@ -188,53 +209,122 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
         },
       })),
     }));
+    setSelectedPerson(null);
   };
 
   return (
     <ReactFlowProvider>
-      <div style={{ width: "100%", height: "100vh" }}>
-        <div style={{ padding: "10px", position: "relative", zIndex: 10 }}>
-          <input
-            type="text"
-            placeholder="Search for a person..."
-            value={searchTerm}
-            onChange={handleInputChange}
-            style={{
-              padding: "8px",
-              borderRadius: "5px",
-              border: "1px solid #ccc",
-              marginRight: "10px",
-              width: "250px",
-            }}
-          />
-          <div style={{
-            position: "absolute",
-            backgroundColor: "#fff",
-            border: "1px solid #ccc",
-            borderRadius: "5px",
-            width: "250px",
-            maxHeight: "150px",
-            overflowY: "auto",
-          }}>
-            {suggestions.map((node) => (
-              <div key={node.id} onClick={() => handleSuggestionClick(node.id)} style={{ padding: "8px", cursor: "pointer" }}>
-                {node.data.label}
-              </div>
-            ))}
+      <div style={{ display: "flex", height: "100vh" }}>
+        {/* Family Tree Diagram */}
+        <div style={{ flex: 3, position: "relative" }}>
+          <div style={{ padding: "10px", position: "absolute", top: 0, left: 0, zIndex: 10 }}>
+            <input
+              type="text"
+              placeholder="Search for a person..."
+              value={searchTerm}
+              onChange={handleInputChange}
+              style={{
+                padding: "8px",
+                borderRadius: "5px",
+                border: "1px solid #ccc",
+                marginRight: "10px",
+                width: "250px",
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                backgroundColor: "#fff",
+                border: "1px solid #ccc",
+                borderRadius: "5px",
+                width: "250px",
+                maxHeight: "150px",
+                overflowY: "auto",
+              }}
+            >
+              {suggestions.map((node) => (
+                <div
+                  key={node.id}
+                  onClick={() => handleSuggestionClick(node.id)}
+                  style={{ padding: "8px", cursor: "pointer" }}
+                >
+                  {node.data.label}
+                </div>
+              ))}
+            </div>
           </div>
+          <ReactFlow
+            nodes={data.nodes}
+            edges={data.edges}
+            onInit={(instance) => (reactFlowInstance.current = instance)}
+            onPaneClick={handlePaneClick}
+            onNodeClick={handleNodeClick}
+            fitView
+            style={{ background: "#f8f9fa", height: "100%" }}
+          >
+            <Background />
+            <Controls />
+          </ReactFlow>
         </div>
-        <ReactFlow
-          nodes={data.nodes}
-          edges={data.edges}
-          onInit={(instance) => (reactFlowInstance.current = instance)}
-          onPaneClick={handlePaneClick}
-          onNodeClick={(event, node) => highlightRelatedNodes(node.id)}
-          fitView
-          style={{ background: "#f8f9fa" }}
-        >
-          <Background />
-          <Controls />
-        </ReactFlow>
+
+        {/* Sidebar */}
+        <div
+  style={{
+    flex: 1,
+    backgroundColor: "#f1f1f1",
+    padding: "20px",
+    overflowY: "auto",
+  }}
+>
+  {selectedPerson ? (
+    <div>
+      <h2>Person Details</h2>
+      <p>
+        <strong>First Name:</strong>{" "}
+        {selectedPerson.data?.NAME?.split(" ")[0] || "Unknown"}
+      </p>
+      <p>
+        <strong>Last Name:</strong>{" "}
+        {selectedPerson.data?.NAME?.split(" ")[1] || "Unknown"}
+      </p>
+      <p>
+        <strong>Date of Birth:</strong>{" "}
+        {selectedPerson.data?.BIRT?.DATE || "Unknown"}
+      </p>
+      <p>
+        <strong>Alive:</strong>{" "}
+        {selectedPerson.data?.DEAT ? "No" : "Yes"}
+      </p>
+      {selectedPerson.data?.DEAT && (
+        <p>
+          <strong>Date of Death:</strong>{" "}
+          {selectedPerson.data?.DEAT?.DATE || "Unknown"}
+        </p>
+      )}
+      <p>
+        <strong>Father:</strong>{" "}
+        {gedcomData.individuals[selectedPerson.relationships?.father]?.data
+          ?.NAME || "Unknown"}
+      </p>
+      <p>
+        <strong>Mother:</strong>{" "}
+        {gedcomData.individuals[selectedPerson.relationships?.mother]?.data
+          ?.NAME || "Unknown"}
+      </p>
+      <p>
+        <strong>Children:</strong>{" "}
+        {selectedPerson.relationships?.children
+          ?.map(
+            (childId) =>
+              gedcomData.individuals[childId]?.data?.NAME || "Unknown"
+          )
+          .join(", ") || "None"}
+      </p>
+    </div>
+  ) : (
+    <h2>Select a person to see details</h2>
+  )}
+</div>
       </div>
     </ReactFlowProvider>
   );
