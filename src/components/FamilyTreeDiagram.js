@@ -45,27 +45,23 @@ const getLayoutedElements = (nodes, edges) => {
 const FamilyTreeDiagram = ({ gedcomData }) => {
   const [data, setData] = useState({ nodes: [], edges: [] });
   const [searchTerm, setSearchTerm] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
   const reactFlowInstance = useRef(null);
 
   useEffect(() => {
     if (gedcomData) {
       const nodes = Object.entries(gedcomData.individuals).map(([id, individual]) => {
-        const isAlive = !individual.data.DEAT; // Determine if the person is alive
-        const gender = individual.data.SEX; // Get gender
+        const isAlive = !individual.data.DEAT;
+        const gender = individual.data.SEX;
 
-        // Define colors based on gender and life status
         let backgroundColor = "#e0f7ff"; // Default: very light blue for alive males
-        if (!isAlive) {
-          backgroundColor = "#a4d8f0"; // Light blue for deceased males
-        }
-        if (gender === "F") {
-          backgroundColor = isAlive ? "#fde0f7" : "#f0a4d8"; // Very light magenta for alive females, light magenta for deceased
-        }
+        if (!isAlive) backgroundColor = "#a4d8f0";
+        if (gender === "F") backgroundColor = isAlive ? "#fde0f7" : "#f0a4d8";
 
         return {
           id,
           data: {
-            label: individual.data.NAME?.replace(/\//g, "") || "Unknown", // Remove slashes
+            label: individual.data.NAME?.replace(/\//g, "") || "Unknown",
           },
           style: {
             width: nodeWidth,
@@ -78,7 +74,7 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
             fontWeight: "bold",
             color: "black",
           },
-          position: { x: 0, y: 0 }, // Default position; layouted later
+          position: { x: 0, y: 0 },
         };
       });
 
@@ -113,40 +109,27 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
     const relatedNodes = new Set();
     relatedNodes.add(nodeId);
 
-    // Add parents
-    if (currentIndividual?.relationships?.father) {
-      relatedNodes.add(currentIndividual.relationships.father);
-    }
-    if (currentIndividual?.relationships?.mother) {
-      relatedNodes.add(currentIndividual.relationships.mother);
-    }
-
-    // Add children
+    if (currentIndividual?.relationships?.father) relatedNodes.add(currentIndividual.relationships.father);
+    if (currentIndividual?.relationships?.mother) relatedNodes.add(currentIndividual.relationships.mother);
     if (currentIndividual?.relationships?.children) {
-      currentIndividual.relationships.children.forEach((childId) => {
-        relatedNodes.add(childId);
-      });
+      currentIndividual.relationships.children.forEach((childId) => relatedNodes.add(childId));
     }
-
-    // Add spouse if available
-    if (currentIndividual?.relationships?.spouse) {
-      relatedNodes.add(currentIndividual.relationships.spouse);
-    }
+    if (currentIndividual?.relationships?.spouse) relatedNodes.add(currentIndividual.relationships.spouse);
 
     setData((prevData) => {
       const updatedNodes = prevData.nodes.map((n) => ({
         ...n,
         style: {
           ...n.style,
-          opacity: relatedNodes.has(n.id) ? 1 : 0.3, // Dim unrelated nodes
-          border: relatedNodes.has(n.id) ? "2px solid black" : "none", // Highlight related nodes
+          opacity: relatedNodes.has(n.id) ? 1 : 0.3,
+          border: relatedNodes.has(n.id) ? "2px solid black" : "none",
         },
       }));
 
       const updatedEdges = prevData.edges.map((edge) => ({
         ...edge,
         style: {
-          stroke: relatedNodes.has(edge.source) && relatedNodes.has(edge.target) ? "#000" : "#ccc", // Highlight related edges
+          stroke: relatedNodes.has(edge.source) && relatedNodes.has(edge.target) ? "#000" : "#ccc",
           strokeWidth: relatedNodes.has(edge.source) && relatedNodes.has(edge.target) ? 2 : 1,
         },
       }));
@@ -155,35 +138,36 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
     });
   };
 
-  const handleSearch = () => {
-    const targetNode = data.nodes.find((node) =>
-      node.data.label.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  const handleSearch = (nodeId) => {
+    const targetNode = data.nodes.find((node) => node.id === nodeId);
 
     if (targetNode && reactFlowInstance.current) {
       const { x, y } = targetNode.position;
-      reactFlowInstance.current.setCenter(
-        x + nodeWidth / 2, // Center horizontally
-        y + nodeHeight / 2, // Center vertically
-        {
-          zoom: 1.5, // Optional: Adjust zoom level
-        }
-      );
-      highlightRelatedNodes(targetNode.id); // Highlight the searched person and related nodes
+      reactFlowInstance.current.setCenter(x + nodeWidth / 2, y + nodeHeight / 2, { zoom: 1.5 });
+      highlightRelatedNodes(targetNode.id);
     } else {
       alert("Person not found.");
     }
   };
 
-  const handleNodeClick = (event, node) => {
-    console.log("Node clicked:", node);
-    highlightRelatedNodes(node.id);
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+
+    if (value) {
+      const matches = data.nodes.filter((node) =>
+        node.data.label.toLowerCase().includes(value.toLowerCase())
+      );
+      setSuggestions(matches);
+    } else {
+      setSuggestions([]);
+    }
   };
 
-  const handleKeyPress = (event) => {
-    if (event.key === "Enter") {
-      handleSearch();
-    }
+  const handleSuggestionClick = (nodeId) => {
+    handleSearch(nodeId);
+    setSuggestions([]);
+    setSearchTerm("");
   };
 
   const handlePaneClick = () => {
@@ -192,15 +176,15 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
         ...n,
         style: {
           ...n.style,
-          opacity: 1, // Reset all nodes to fully visible
-          border: "none", // Remove border highlights
+          opacity: 1,
+          border: "none",
         },
       })),
       edges: prevData.edges.map((e) => ({
         ...e,
         style: {
-          stroke: "#ccc", // Reset all edges to default stroke
-          strokeWidth: 1, // Default stroke width
+          stroke: "#ccc",
+          strokeWidth: 1,
         },
       })),
     }));
@@ -209,13 +193,12 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
   return (
     <ReactFlowProvider>
       <div style={{ width: "100%", height: "100vh" }}>
-        <div style={{ padding: "10px", backgroundColor: "#f8f9fa", zIndex: 10 }}>
+        <div style={{ padding: "10px", position: "relative", zIndex: 10 }}>
           <input
             type="text"
             placeholder="Search for a person..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onChange={handleInputChange}
             style={{
               padding: "8px",
               borderRadius: "5px",
@@ -224,26 +207,28 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
               width: "250px",
             }}
           />
-          <button
-            onClick={handleSearch}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "5px",
-              backgroundColor: "#007bff",
-              color: "#fff",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            Search
-          </button>
+          <div style={{
+            position: "absolute",
+            backgroundColor: "#fff",
+            border: "1px solid #ccc",
+            borderRadius: "5px",
+            width: "250px",
+            maxHeight: "150px",
+            overflowY: "auto",
+          }}>
+            {suggestions.map((node) => (
+              <div key={node.id} onClick={() => handleSuggestionClick(node.id)} style={{ padding: "8px", cursor: "pointer" }}>
+                {node.data.label}
+              </div>
+            ))}
+          </div>
         </div>
         <ReactFlow
           nodes={data.nodes}
           edges={data.edges}
-          onNodeClick={handleNodeClick}
-          onPaneClick={handlePaneClick}
           onInit={(instance) => (reactFlowInstance.current = instance)}
+          onPaneClick={handlePaneClick}
+          onNodeClick={(event, node) => highlightRelatedNodes(node.id)}
           fitView
           style={{ background: "#f8f9fa" }}
         >
