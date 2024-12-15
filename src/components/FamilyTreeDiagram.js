@@ -14,6 +14,30 @@ dagreGraph.setDefaultEdgeLabel(() => ({}));
 const nodeWidth = 200;
 const nodeHeight = 100;
 
+const translations = {
+  en: {
+    title: "GEDCOM Family Tree Viewer",
+    uploadFile: "Upload a GEDCOM file to visualize your family tree.",
+    viewTree: "View Family Tree",
+    personDetails: "Person Details",
+    firstName: "First Name",
+    lastName: "Last Name",
+    unknown: "Unknown",
+    selectPerson: "Select a person to see details",
+  },
+  ar: {
+    title: "عارض شجرة العائلة GEDCOM",
+    uploadFile: "قم بتحميل ملف GEDCOM لعرض شجرة العائلة الخاصة بك.",
+    viewTree: "عرض شجرة العائلة",
+    personDetails: "تفاصيل الشخص",
+    firstName: "الاسم الأول",
+    lastName: "اسم العائلة",
+    unknown: "غير معروف",
+    selectPerson: "حدد شخصًا لرؤية التفاصيل",
+  },
+};
+
+
 // Helper to calculate layout
 const getLayoutedElements = (nodes, edges) => {
   dagreGraph.setGraph({ rankdir: "TB" });
@@ -275,56 +299,56 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
     padding: "20px",
     overflowY: "auto",
   }}
->
-  {selectedPerson ? (
-    <div>
-      <h2>Person Details</h2>
-      <p>
-        <strong>First Name:</strong>{" "}
-        {selectedPerson.data?.NAME?.split(" ")[0] || "Unknown"}
-      </p>
-      <p>
-        <strong>Last Name:</strong>{" "}
-        {selectedPerson.data?.NAME?.split(" ")[1] || "Unknown"}
-      </p>
-      <p>
-        <strong>Date of Birth:</strong>{" "}
-        {selectedPerson.data?.BIRT?.DATE || "Unknown"}
-      </p>
-      <p>
-        <strong>Alive:</strong>{" "}
-        {selectedPerson.data?.DEAT ? "No" : "Yes"}
-      </p>
-      {selectedPerson.data?.DEAT && (
-        <p>
-          <strong>Date of Death:</strong>{" "}
-          {selectedPerson.data?.DEAT?.DATE || "Unknown"}
-        </p>
+    >
+      {selectedPerson ? (
+        <div>
+          <h2>{translations[language].personDetails}</h2>
+          <p>
+            <strong>{translations[language].firstName}:</strong>{" "}
+            {selectedPerson.data?.NAME?.split(" ")[0] || translations[language].unknown}
+          </p>
+          <p>
+            <strong>{translations[language].lastName}:</strong>{" "}
+            {selectedPerson.data?.NAME?.split(" ")[1] || translations[language].unknown}
+          </p>
+          <p>
+            <strong>Date of Birth:</strong>{" "}
+            {selectedPerson.data?.BIRT?.DATE || "Unknown"}
+          </p>
+          <p>
+            <strong>Alive:</strong>{" "}
+            {selectedPerson.data?.DEAT ? "No" : "Yes"}
+          </p>
+          {selectedPerson.data?.DEAT && (
+            <p>
+              <strong>Date of Death:</strong>{" "}
+              {selectedPerson.data?.DEAT?.DATE || "Unknown"}
+            </p>
+          )}
+          <p>
+            <strong>Father:</strong>{" "}
+            {gedcomData.individuals[selectedPerson.relationships?.father]?.data
+              ?.NAME || "Unknown"}
+          </p>
+          <p>
+            <strong>Mother:</strong>{" "}
+            {gedcomData.individuals[selectedPerson.relationships?.mother]?.data
+              ?.NAME || "Unknown"}
+          </p>
+          <p>
+            <strong>Children:</strong>{" "}
+            {selectedPerson.relationships?.children
+              ?.map(
+                (childId) =>
+                  gedcomData.individuals[childId]?.data?.NAME || "Unknown"
+              )
+              .join(", ") || "None"}
+          </p>
+        </div>
+      ) : (
+        <h2>Select a person to see details</h2>
       )}
-      <p>
-        <strong>Father:</strong>{" "}
-        {gedcomData.individuals[selectedPerson.relationships?.father]?.data
-          ?.NAME || "Unknown"}
-      </p>
-      <p>
-        <strong>Mother:</strong>{" "}
-        {gedcomData.individuals[selectedPerson.relationships?.mother]?.data
-          ?.NAME || "Unknown"}
-      </p>
-      <p>
-        <strong>Children:</strong>{" "}
-        {selectedPerson.relationships?.children
-          ?.map(
-            (childId) =>
-              gedcomData.individuals[childId]?.data?.NAME || "Unknown"
-          )
-          .join(", ") || "None"}
-      </p>
-    </div>
-  ) : (
-    <h2>Select a person to see details</h2>
-  )}
-</div>
+        </div>
       </div>
     </ReactFlowProvider>
   );
