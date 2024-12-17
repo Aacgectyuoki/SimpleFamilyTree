@@ -18,7 +18,7 @@ const GEDCOMPage = ({ gedcomData, onDataLoaded, language, translations }) => {
       </p>
       
       {/* GEDCOM Uploader Component */}
-      <GedcomUploader onDataLoaded={onDataLoaded} />
+      <GedcomUploader onDataLoaded={onDataLoaded} language={language} />
       
       {/* View Family Tree Button */}
       {gedcomData && (

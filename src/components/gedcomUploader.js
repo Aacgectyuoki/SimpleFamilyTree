@@ -6,14 +6,36 @@ const GedcomUploader = ({ onDataLoaded }) => {
   const navigate = useNavigate();
   const [gedcomData, setGedcomData] = useState(null);
 
+  const cleanGedcomData = (data) => {
+    const cleanedIndividuals = Object.entries(data.individuals).reduce(
+      (acc, [id, individual]) => {
+        acc[id] = {
+          ...individual,
+          data: {
+            ...individual.data,
+            NAME: individual.data.NAME?.replace(/\//g, "") || "Unknown", // Clean up NAME
+          },
+        };
+        return acc;
+      },
+      {}
+    );
+  
+    return {
+      ...data,
+      individuals: cleanedIndividuals,
+    };
+  };
+
   const onFileChange = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
     try {
       const parsedData = await handleFileUpload(file);
-      setGedcomData(parsedData);
-      if (onDataLoaded) onDataLoaded(parsedData);
+      const cleanedData = cleanGedcomData(parsedData);
+      setGedcomData(cleanedData);
+      if (onDataLoaded) onDataLoaded(cleanedData);
     } catch (error) {
       console.error("Failed to parse GEDCOM file:", error);
     }

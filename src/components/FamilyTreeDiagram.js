@@ -7,35 +7,13 @@ import ReactFlow, {
 import dagre from "dagre";
 import "../styles/FamilyTree.css";
 import "react-flow-renderer/dist/style.css";
+import translations from "../translations";
 
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
 
 const nodeWidth = 200;
 const nodeHeight = 100;
-
-const translations = {
-  en: {
-    title: "GEDCOM Family Tree Viewer",
-    uploadFile: "Upload a GEDCOM file to visualize your family tree.",
-    viewTree: "View Family Tree",
-    personDetails: "Person Details",
-    firstName: "First Name",
-    lastName: "Last Name",
-    unknown: "Unknown",
-    selectPerson: "Select a person to see details",
-  },
-  ar: {
-    title: "عارض شجرة العائلة GEDCOM",
-    uploadFile: "قم بتحميل ملف GEDCOM لعرض شجرة العائلة الخاصة بك.",
-    viewTree: "عرض شجرة العائلة",
-    personDetails: "تفاصيل الشخص",
-    firstName: "الاسم الأول",
-    lastName: "اسم العائلة",
-    unknown: "غير معروف",
-    selectPerson: "حدد شخصًا لرؤية التفاصيل",
-  },
-};
 
 
 // Helper to calculate layout
@@ -66,13 +44,14 @@ const getLayoutedElements = (nodes, edges) => {
   return { nodes: layoutedNodes, edges };
 };
 
-const FamilyTreeDiagram = ({ gedcomData }) => {
+const FamilyTreeDiagram = ({ gedcomData, language }) => {
   const [data, setData] = useState({ nodes: [], edges: [] });
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [suggestions, setSuggestions] = useState([]);
-  const [language, setLanguage] = useState("en");
   const reactFlowInstance = useRef(null);
+
+  const t = (key) => translations[language]?.[key] || key;
 
   useEffect(() => {
     if (gedcomData) {
@@ -84,9 +63,10 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
         if (!isAlive) backgroundColor = "#a4d8f0";
         if (gender === "F") backgroundColor = isAlive ? "#fde0f7" : "#f0a4d8";
 
-        const name = language === 'ar' 
-          ? individual.data.NAME_ARABIC || individual.data.NAME 
-          : individual.data.NAME?.replace(/\//g, "") || "Unknown";
+        const name =
+          language === "ar"
+            ? individual.data.NAME_ARABIC || individual.data.NAME
+            : individual.data.NAME?.replace(/\//g, "") || "Unknown";
 
 
         return {
@@ -135,9 +115,9 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
     }
   }, [gedcomData, language]);
 
-  const handleLanguageToggle = () => {
-    setLanguage((prevLang) => (prevLang === "en" ? "ar" : "en"));
-  };
+  // const handleLanguageToggle = () => {
+  //   setLanguage((prevLang) => (prevLang === "en" ? "ar" : "en"));
+  // };
 
   const highlightRelatedNodes = (nodeId) => {
     const currentIndividual = gedcomData.individuals[nodeId];
@@ -244,7 +224,7 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
           <div style={{ padding: "10px", position: "absolute", top: 0, left: 0, zIndex: 10 }}>
             <input
               type="text"
-              placeholder="Search for a person..."
+              placeholder={translations[language].searchPlaceholder || "Search for a person..."}
               value={searchTerm}
               onChange={handleInputChange}
               style={{
@@ -301,53 +281,51 @@ const FamilyTreeDiagram = ({ gedcomData }) => {
   }}
     >
       {selectedPerson ? (
-        <div>
-          <h2>{translations[language].personDetails}</h2>
-          <p>
-            <strong>{translations[language].firstName}:</strong>{" "}
-            {selectedPerson.data?.NAME?.split(" ")[0] || translations[language].unknown}
-          </p>
-          <p>
-            <strong>{translations[language].lastName}:</strong>{" "}
-            {selectedPerson.data?.NAME?.split(" ")[1] || translations[language].unknown}
-          </p>
-          <p>
-            <strong>Date of Birth:</strong>{" "}
-            {selectedPerson.data?.BIRT?.DATE || "Unknown"}
-          </p>
-          <p>
-            <strong>Alive:</strong>{" "}
-            {selectedPerson.data?.DEAT ? "No" : "Yes"}
-          </p>
-          {selectedPerson.data?.DEAT && (
-            <p>
-              <strong>Date of Death:</strong>{" "}
-              {selectedPerson.data?.DEAT?.DATE || "Unknown"}
-            </p>
+            <div>
+              <h2>{t("personDetails")}</h2>
+              <p>
+                <strong>{t("firstName")}:</strong>{" "}
+                {selectedPerson.data?.NAME?.split(" ")[0] || t.unknown}
+              </p>
+              <p>
+                <strong>{t("lastName")}:</strong>{" "}
+                {selectedPerson.data?.NAME?.split(" ")[1] || t.unknown}
+              </p>
+              <p>
+                <strong>{t("dateOfBirth")}:</strong>{" "}
+                {selectedPerson.data?.BIRT?.DATE || t.unknown}
+              </p>
+              <p>
+                <strong>{t("alive")}:</strong>{" "}
+                {selectedPerson.data?.DEAT ? t.no : t.yes}
+              </p>
+              {selectedPerson.data?.DEAT && (
+                <p>
+                  <strong>{t("dateOfDeath")}:</strong>{" "}
+                  {selectedPerson.data?.DEAT?.DATE || t.unknown}
+                </p>
+              )}
+              <p>
+                <strong>{t("father")}:</strong>{" "}
+                {gedcomData.individuals[selectedPerson.relationships?.father]?.data?.NAME || t.unknown}
+              </p>
+              <p>
+                <strong>{t("mother")}:</strong>{" "}
+                {gedcomData.individuals[selectedPerson.relationships?.mother]?.data?.NAME || t.unknown}
+              </p>
+              <p>
+                <strong>{t("children")}:</strong>{" "}
+                {selectedPerson.relationships?.children
+                  ?.map(
+                    (childId) =>
+                      gedcomData.individuals[childId]?.data?.NAME || t.unknown
+                  )
+                  .join(", ") || t.none}
+              </p>
+            </div>
+          ) : (
+            <h2>{t("selectPerson")}</h2>
           )}
-          <p>
-            <strong>Father:</strong>{" "}
-            {gedcomData.individuals[selectedPerson.relationships?.father]?.data
-              ?.NAME || "Unknown"}
-          </p>
-          <p>
-            <strong>Mother:</strong>{" "}
-            {gedcomData.individuals[selectedPerson.relationships?.mother]?.data
-              ?.NAME || "Unknown"}
-          </p>
-          <p>
-            <strong>Children:</strong>{" "}
-            {selectedPerson.relationships?.children
-              ?.map(
-                (childId) =>
-                  gedcomData.individuals[childId]?.data?.NAME || "Unknown"
-              )
-              .join(", ") || "None"}
-          </p>
-        </div>
-      ) : (
-        <h2>Select a person to see details</h2>
-      )}
         </div>
       </div>
     </ReactFlowProvider>
