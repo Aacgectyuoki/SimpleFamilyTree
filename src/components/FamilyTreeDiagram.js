@@ -8,13 +8,30 @@ import dagre from "dagre";
 import "../styles/FamilyTree.css";
 import "react-flow-renderer/dist/style.css";
 import translations from "../translations";
+import translateText from "../utils/translate";
+
+
+// LibreTranslate API function
+// const translateText = async (text, source = "en", target = "ar") => {
+//   try {
+//     const response = await axios.post("https://libretranslate.com/translate", {
+//       q: text,
+//       source: source,
+//       target: target,
+//       format: "text",
+//     });
+//     return response.data.translatedText;
+//   } catch (error) {
+//     console.error("Translation Error:", error);
+//     return text; // Fallback to original text
+//   }
+// };
 
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
 
 const nodeWidth = 200;
 const nodeHeight = 100;
-
 
 // Helper to calculate layout
 const getLayoutedElements = (nodes, edges) => {
@@ -58,66 +75,86 @@ const FamilyTreeDiagram = ({ gedcomData, language }) => {
       const nodes = Object.entries(gedcomData.individuals).map(([id, individual]) => {
         const isAlive = !individual.data.DEAT;
         const gender = individual.data.SEX;
-
-        let backgroundColor = "#e0f7ff"; // Default: very light blue for alive males
+  
+        let backgroundColor = "#e0f7ff"; // Default: alive males
         if (!isAlive) backgroundColor = "#a4d8f0";
         if (gender === "F") backgroundColor = isAlive ? "#fde0f7" : "#f0a4d8";
-
+  
         const name =
           language === "ar"
-            ? individual.data.NAME_ARABIC || individual.data.NAME
+            ? individual.data.NAME_ARABIC || individual.data.NAME?.replace(/\//g, "") || "Unknown"
             : individual.data.NAME?.replace(/\//g, "") || "Unknown";
-
-
+  
         return {
           id,
-          data: {
-            label: name,
-            // label: individual.data.NAME?.replace(/\//g, "") || "Unknown",
-          },
+          data: { label: name },
           style: {
             width: nodeWidth,
             height: nodeHeight,
             backgroundColor,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
             fontSize: "16px",
-            fontWeight: "bold",
-            color: "black",
           },
           position: { x: 0, y: 0 },
         };
       });
-
-      const edges = Object.entries(gedcomData.individuals)
-        .flatMap(([id, individual]) => {
-          const connections = [];
-          if (individual.relationships?.father) {
-            connections.push({
-              id: `${individual.relationships.father}-${id}`,
-              source: individual.relationships.father,
-              target: id,
-            });
-          }
-          if (individual.relationships?.mother) {
-            connections.push({
-              id: `${individual.relationships.mother}-${id}`,
-              source: individual.relationships.mother,
-              target: id,
-            });
-          }
-          return connections;
-        });
-
+  
+      const edges = Object.entries(gedcomData.individuals).flatMap(([id, individual]) => {
+        const connections = [];
+        if (individual.relationships?.father) {
+          connections.push({
+            id: `${individual.relationships.father}-${id}`,
+            source: individual.relationships.father,
+            target: id,
+          });
+        }
+        if (individual.relationships?.mother) {
+          connections.push({
+            id: `${individual.relationships.mother}-${id}`,
+            source: individual.relationships.mother,
+            target: id,
+          });
+        }
+        return connections;
+      });
+  
       const layoutedData = getLayoutedElements(nodes, edges);
       setData(layoutedData);
     }
   }, [gedcomData, language]);
+  
+  // Add the missing `data.nodes` dependency
+  useEffect(() => {
+    const translateNodeLabels = async () => {
+      const translatedNodes = await Promise.all(
+        data.nodes.map(async (node) => {
+          const translatedLabel = await translateText(node.data.label, "en", language);
+          return { ...node, data: { ...node.data, label: translatedLabel } };
+        })
+      );
+      setData((prevData) => ({ ...prevData, nodes: translatedNodes }));
+    };
+  
+    if (language === "ar" && data.nodes.length > 0) {
+      translateNodeLabels();
+    }
+  }, [language, data.nodes]);
+  
 
-  // const handleLanguageToggle = () => {
-  //   setLanguage((prevLang) => (prevLang === "en" ? "ar" : "en"));
-  // };
+  useEffect(() => {
+    const translateNodeLabels = async () => {
+      const translatedNodes = await Promise.all(
+        data.nodes.map(async (node) => {
+          const translatedLabel = await translateText(node.data.label, "en", language);
+          return { ...node, data: { ...node.data, label: translatedLabel } };
+        })
+      );
+      setData((prevData) => ({ ...prevData, nodes: translatedNodes }));
+    };
+  
+    if (language === "ar") {
+      translateNodeLabels();
+    }
+  }, [language]);
 
   const highlightRelatedNodes = (nodeId) => {
     const currentIndividual = gedcomData.individuals[nodeId];
@@ -285,42 +322,42 @@ const FamilyTreeDiagram = ({ gedcomData, language }) => {
               <h2>{t("personDetails")}</h2>
               <p>
                 <strong>{t("firstName")}:</strong>{" "}
-                {selectedPerson.data?.NAME?.split(" ")[0] || t.unknown}
+                {selectedPerson.data?.NAME?.split(" ")[0] || t("unknown")}
               </p>
               <p>
                 <strong>{t("lastName")}:</strong>{" "}
-                {selectedPerson.data?.NAME?.split(" ")[1] || t.unknown}
+                {selectedPerson.data?.NAME?.split(" ")[1] || t("unknown")}
               </p>
               <p>
                 <strong>{t("dateOfBirth")}:</strong>{" "}
-                {selectedPerson.data?.BIRT?.DATE || t.unknown}
+                {selectedPerson.data?.BIRT?.DATE || t("unknown")}
               </p>
               <p>
                 <strong>{t("alive")}:</strong>{" "}
-                {selectedPerson.data?.DEAT ? t.no : t.yes}
+                {selectedPerson.data?.DEAT ? t("no") : t("yes")}
               </p>
               {selectedPerson.data?.DEAT && (
                 <p>
                   <strong>{t("dateOfDeath")}:</strong>{" "}
-                  {selectedPerson.data?.DEAT?.DATE || t.unknown}
+                  {selectedPerson.data?.DEAT?.DATE || t("unknown")}
                 </p>
               )}
               <p>
                 <strong>{t("father")}:</strong>{" "}
-                {gedcomData.individuals[selectedPerson.relationships?.father]?.data?.NAME || t.unknown}
+                {gedcomData.individuals[selectedPerson.relationships?.father]?.data?.NAME || t("unknown")}
               </p>
               <p>
                 <strong>{t("mother")}:</strong>{" "}
-                {gedcomData.individuals[selectedPerson.relationships?.mother]?.data?.NAME || t.unknown}
+                {gedcomData.individuals[selectedPerson.relationships?.mother]?.data?.NAME || t("unknown")}
               </p>
               <p>
                 <strong>{t("children")}:</strong>{" "}
                 {selectedPerson.relationships?.children
                   ?.map(
                     (childId) =>
-                      gedcomData.individuals[childId]?.data?.NAME || t.unknown
+                      gedcomData.individuals[childId]?.data?.NAME || t("unknown")
                   )
-                  .join(", ") || t.none}
+                  .join(", ") || t("none")}
               </p>
             </div>
           ) : (
