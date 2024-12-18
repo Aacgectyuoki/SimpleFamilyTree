@@ -7,31 +7,54 @@ import axios from "axios";
  * @param {string} target - Target language code (e.g., "ar").
  * @returns {Promise<string>} - Translated text or original text on error.
  */
+
+// import axios from "axios";
+
 const translateText = async (text, source = "en", target = "ar") => {
-  if (!text || typeof text !== "string") {
-    console.warn("Invalid text input for translation:", text);
+  if (source !== "en" || target !== "ar") {
+    console.warn("Invalid language pair. Only 'en' and 'ar' are supported.");
     return text;
   }
 
   try {
     const response = await axios.get("https://api.mymemory.translated.net/get", {
-      params: {
-        q: text,                 // Text to translate
-        langpair: `${source}|${target}`, // Language pair: source|target
-      },
+      params: { q: text, langpair: `${source}|${target}` },
     });
 
-    // Check if translation is successful
-    if (response.data && response.data.responseData && response.data.responseData.translatedText) {
-      return response.data.responseData.translatedText;
-    } else {
-      console.warn("Unexpected response structure:", response.data);
-      return text; // Fallback to original text
-    }
+    return response.data.responseData.translatedText || text;
   } catch (error) {
-    console.error("Translation Error:", error.message || error);
-    return text; // Return original text as fallback
+    console.error("Translation Error:", error);
+    return text; // Fallback to original text
   }
 };
 
 export default translateText;
+
+// const translateText = async (text, source = "en", target = "ar") => {
+//   if (!text || typeof text !== "string") {
+//     console.warn("Invalid text input for translation:", text);
+//     return text;
+//   }
+
+//   try {
+//     const response = await axios.get("https://api.mymemory.translated.net/get", {
+//       params: {
+//         q: text,                 // Text to translate
+//         langpair: `${source}|${target}`, // Language pair: source|target
+//       },
+//     });
+
+//     // Check if translation is successful
+//     if (response.data && response.data.responseData && response.data.responseData.translatedText) {
+//       return response.data.responseData.translatedText;
+//     } else {
+//       console.warn("Unexpected response structure:", response.data);
+//       return text; // Fallback to original text
+//     }
+//   } catch (error) {
+//     console.error("Translation Error:", error.message || error);
+//     return text; // Return original text as fallback
+//   }
+// };
+
+// export default translateText;
