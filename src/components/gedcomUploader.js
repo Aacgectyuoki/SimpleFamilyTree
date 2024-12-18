@@ -2,10 +2,11 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { handleFileUpload } from "../services/gedcomParser";
 
-const GedcomUploader = ({ onDataLoaded }) => {
+const GedcomUploader = () => {
   const navigate = useNavigate();
   const [gedcomData, setGedcomData] = useState(null);
 
+  // Clean GEDCOM data (remove extra slashes, format names)
   const cleanGedcomData = (data) => {
     const cleanedIndividuals = Object.entries(data.individuals).reduce(
       (acc, [id, individual]) => {
@@ -13,20 +14,21 @@ const GedcomUploader = ({ onDataLoaded }) => {
           ...individual,
           data: {
             ...individual.data,
-            NAME: individual.data.NAME?.replace(/\//g, "") || "Unknown", // Clean up NAME
+            NAME: individual.data.NAME?.replace(/\//g, "") || "Unknown",
           },
         };
         return acc;
       },
       {}
     );
-  
+
     return {
       ...data,
       individuals: cleanedIndividuals,
     };
   };
 
+  // Handle file change
   const onFileChange = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -35,40 +37,14 @@ const GedcomUploader = ({ onDataLoaded }) => {
       const parsedData = await handleFileUpload(file);
       const cleanedData = cleanGedcomData(parsedData);
       setGedcomData(cleanedData);
-      if (onDataLoaded) onDataLoaded(cleanedData);
+      console.log("Cleaned GEDCOM Data:", cleanedData);
     } catch (error) {
       console.error("Failed to parse GEDCOM file:", error);
     }
   };
 
-  const renderIndividual = (individual, allIndividuals) => {
-    const { id, data, relationships } = individual;
-    const name = data.NAME || "Unknown";
-    const birthDate = data.BIRT?.DATE || "Unknown";
-    const birthPlace = data.BIRT?.PLAC || "Unknown";
-    const deathDate = data.DEAT?.DATE || "Unknown";
-
-    const father = relationships.father
-      ? allIndividuals[relationships.father]?.data.NAME || "Unknown"
-      : "Unknown";
-    const mother = relationships.mother
-      ? allIndividuals[relationships.mother]?.data.NAME || "Unknown"
-      : "Unknown";
-
-    return (
-      <div key={id} style={{ border: "1px solid #ddd", padding: "10px", marginBottom: "10px" }}>
-        <h3>{name}</h3>
-        <p><strong>Born:</strong> {birthDate}</p>
-        <p><strong>Birth Place:</strong> {birthPlace}</p>
-        <p><strong>Died:</strong> {deathDate}</p>
-        <p><strong>Father:</strong> {father}</p>
-        <p><strong>Mother:</strong> {mother}</p>
-      </div>
-    );
-  };
-
   return (
-    <div style={{ maxWidth: "600px", margin: "0 auto" }}>
+    <div style={{ maxWidth: "600px", margin: "0 auto", textAlign: "center" }}>
       <h2>Upload GEDCOM File</h2>
       <input
         type="file"
@@ -76,22 +52,17 @@ const GedcomUploader = ({ onDataLoaded }) => {
         onChange={onFileChange}
         style={{ marginBottom: "20px" }}
       />
-
       <button
-        onClick={() => navigate("/diagram")}
-        style={{ marginTop: "30px", padding: "12px 25px" }}
+        onClick={() => navigate("/diagram", { state: { gedcomData } })}
+        style={{
+          marginTop: "20px",
+          padding: "12px 25px",
+          cursor: gedcomData ? "pointer" : "not-allowed",
+        }}
+        disabled={!gedcomData}
       >
         View Family Tree
       </button>
-
-      {gedcomData && (
-        <div>
-          <h2>Parsed GEDCOM Data</h2>
-          {Object.values(gedcomData.individuals).map((individual) =>
-            renderIndividual(individual, gedcomData.individuals)
-          )}
-        </div>
-      )}
     </div>
   );
 };
