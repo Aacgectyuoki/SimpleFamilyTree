@@ -96,6 +96,7 @@ const FamilyTreeDiagram = () => {
           })
         );
 
+        // Edges
         const edges = Object.entries(gedcomData.individuals).flatMap(([id, individual]) => {
           const connections = [];
           if (individual.relationships?.father) connections.push({ source: individual.relationships.father, target: id });
@@ -211,27 +212,35 @@ const FamilyTreeDiagram = () => {
         <div style={{ flex: 1, backgroundColor: "#f1f1f1", padding: "20px" }}>
           {selectedPerson ? (
             <div>
-              <h2>Person Details</h2>
-              {/* <p>
-                <strong>First Name:</strong> {selectedPerson.data.GIVN || "Unknown"}
+              <h2>{translations.personDetails}</h2>
+              <p>
+                <strong>{translations.firstName}:</strong>{" "}
+                {language === "ar" ? selectedPerson.translatedName?.split(" ")[0] || translations.unknown : selectedPerson.data.GIVN || translations.unknown}
               </p>
               <p>
-                <strong>Last Name:</strong> {selectedPerson.data.SURN || ""}
-              </p> */}
-              <p>
-                <strong>Full Name:</strong> {selectedPerson.data.GIVN || "Unknown"} {selectedPerson.data.SURN || ""}
+                <strong>{translations.lastName}:</strong>{" "}
+                {language === "ar" ? selectedPerson.translatedName?.split(" ")[1] || translations.unknown : selectedPerson.data.SURN || translations.unknown}
               </p>
               <p>
-                <strong>Date of Birth:</strong> {selectedPerson.data.BIRT?.DATE || "Unknown"}
+                <strong>{translations.dateOfBirth}:</strong> {selectedPerson.data.BIRT?.DATE || translations.unknown}
               </p>
               <p>
-                <strong>Alive:</strong> {selectedPerson.data.DEAT ? "No" : "Yes"}
+                <strong>{translations.gender}:</strong> {selectedPerson.data.SEX === "M" ? translations.male : translations.female}
               </p>
+              <p>
+                <strong>{translations.alive}:</strong> {selectedPerson.data.DEAT ? translations.no : translations.yes}
+              </p>
+              {selectedPerson.data.DEAT && (
+                <p>
+                  <strong>{translations.dateOfDeath}:</strong> {selectedPerson.data.DEAT.DATE || translations.unknown}
+                </p>
+              )}
             </div>
           ) : (
-            <h2>Select a person to see details</h2>
+            <h2>{translations.selectPerson}</h2>
           )}
         </div>
+
       </div>
     </ReactFlowProvider>
   );
