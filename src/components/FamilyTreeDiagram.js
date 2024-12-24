@@ -51,7 +51,6 @@ const FamilyTreeDiagram = () => {
   const [data, setData] = useState({ nodes: [], edges: [] });
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [language, setLanguage] = useState("en"); // Language toggle state
-  const [translatedDetails, setTranslatedDetails] = useState({});
   const reactFlowInstance = useRef(null);
 
   const loadLanguage = async () => {
@@ -59,17 +58,6 @@ const FamilyTreeDiagram = () => {
     setTranslations(newTranslations);
     setLanguage(language === "en" ? "ar" : "en");
   };
-
-  // const formatDate = async (dateText) => {
-  //   if (!dateText) return textMap[language].unknown;
-
-  //   const parts = dateText.split(" ");
-  //   const translatedParts = await Promise.all(
-  //     parts.map((part) => translateText(part, language))
-  //   );
-
-  //   return translatedParts.join(" ");
-  // };
 
   useEffect(() => {
     if (gedcomData) {
@@ -124,47 +112,68 @@ const FamilyTreeDiagram = () => {
     }
   }, [gedcomData, language]);
 
-  useEffect(() => {
-    const translateDetails = async () => {
-      if (!selectedPerson) return;
+  // useEffect(() => {
+  //   if (gedcomData) {
+  //     const nodes = Object.entries(gedcomData.individuals).map(([id, individual]) => {
+  //       const isAlive = !individual.data.DEAT;
+  //       const gender = individual.data.SEX;
 
-      const birthDate = selectedPerson.data.BIRT?.DATE
-        ? await formatDate(selectedPerson.data.BIRT.DATE)
-        : translations.unknown;
-      const deathDate = selectedPerson.data.DEAT?.DATE
-        ? await formatDate(selectedPerson.data.DEAT.DATE)
-        : translations.unknown;
-      const firstName = selectedPerson.data.GIVN
-        ? await translateText(selectedPerson.data.GIVN, language)
-        : translations.unknown;
-      const lastName = selectedPerson.data.SURN
-        ? await translateText(selectedPerson.data.SURN, language)
-        : translations.unknown;
+  //       let backgroundColor = "#e0f7ff"; // Default: alive males
+  //       if (!isAlive) backgroundColor = "#a4d8f0";
+  //       if (gender === "F") backgroundColor = isAlive ? "#fde0f7" : "#f0a4d8";
 
-      setTranslatedDetails({
-        birthDate,
-        deathDate,
-        firstName,
-        lastName,
-      });
-    };
+  //       // Translate names based on the selected language
+  //       const firstName = individual.data.GIVN || "Unknown";
+  //       const lastName = individual.data.SURN || "";
+  //       const fullName = `${firstName} ${lastName}`.trim();
 
-    translateDetails();
-  }, [selectedPerson, language]);
+  //       return {
+  //         id,
+  //         data: { label: language === "ar" ? `ترجمة ${fullName}` : fullName },
+  //         style: {
+  //           width: nodeWidth,
+  //           height: nodeHeight,
+  //           backgroundColor,
+  //           display: "flex",
+  //           alignItems: "center",
+  //           justifyContent: "center",
+  //           fontSize: "14px",
+  //           fontWeight: "bold",
+  //         },
+  //         position: { x: 0, y: 0 },
+  //       };
+  //     });
+
+  //     const edges = Object.entries(gedcomData.individuals).flatMap(([id, individual]) => {
+  //       const connections = [];
+  //       if (individual.relationships?.father) {
+  //         connections.push({
+  //           id: `${individual.relationships.father}-${id}`,
+  //           source: individual.relationships.father,
+  //           target: id,
+  //         });
+  //       }
+  //       if (individual.relationships?.mother) {
+  //         connections.push({
+  //           id: `${individual.relationships.mother}-${id}`,
+  //           source: individual.relationships.mother,
+  //           target: id,
+  //         });
+  //       }
+  //       return connections;
+  //     });
+
+  //     const layoutedData = getLayoutedElements(nodes, edges);
+  //     setData(layoutedData);
+  //   }
+  // }, [gedcomData, language]);
+
+  // const handleLanguageToggle = () => {
+  //   setLanguage((prev) => (prev === "en" ? "ar" : "en"));
+  // };
 
   const handleNodeClick = (_, node) => {
     setSelectedPerson(gedcomData.individuals[node.id]);
-  };
-
-  const formatDate = async (dateText) => {
-    if (!dateText) return translations.unknown;
-
-    const parts = dateText.split(" ");
-    const translatedParts = await Promise.all(
-      parts.map((part) => translateText(part, language))
-    );
-
-    return translatedParts.join(" ");
   };
 
   return (
@@ -205,13 +214,15 @@ const FamilyTreeDiagram = () => {
             <div>
               <h2>{translations.personDetails}</h2>
               <p>
-                <strong>{translations.firstName}:</strong> {translatedDetails.firstName}
+                <strong>{translations.firstName}:</strong>{" "}
+                {language === "ar" ? selectedPerson.translatedName?.split(" ")[0] || translations.unknown : selectedPerson.data.GIVN || translations.unknown}
               </p>
               <p>
-                <strong>{translations.lastName}:</strong> {translatedDetails.lastName}
+                <strong>{translations.lastName}:</strong>{" "}
+                {language === "ar" ? selectedPerson.translatedName?.split(" ")[1] || translations.unknown : selectedPerson.data.SURN || translations.unknown}
               </p>
               <p>
-                <strong>{translations.dateOfBirth}:</strong>  {translatedDetails.dateOfBirth}
+                <strong>{translations.dateOfBirth}:</strong> {selectedPerson.data.BIRT?.DATE || translations.unknown}
               </p>
               <p>
                 <strong>{translations.gender}:</strong> {selectedPerson.data.SEX === "M" ? translations.male : translations.female}
@@ -221,7 +232,7 @@ const FamilyTreeDiagram = () => {
               </p>
               {selectedPerson.data.DEAT && (
                 <p>
-                  <strong>{translations.dateOfDeath}:</strong> {translatedDetails.deathDate}
+                  <strong>{translations.dateOfDeath}:</strong> {selectedPerson.data.DEAT.DATE || translations.unknown}
                 </p>
               )}
             </div>

@@ -12,15 +12,15 @@ const translateText = async (text, source = "en", target = "ar") => {
 
     const translatedText = response.data.responseData.translatedText;
 
-    if (translatedText) {
+    if (translatedText && translatedText !== text) {
       return translatedText;
     }
 
-    console.warn("Translation API did not return a result, falling back to original text.");
-    return text;
+    console.warn("Translation API returned the same text, falling back to original text.");
+    return text; // Fallback to the original text if translation fails
   } catch (error) {
     console.error("Translation Error:", error.message);
-    return text;
+    return text; // Fallback on error
   }
 };
 
